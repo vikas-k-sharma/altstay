@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: altstay-api
+  threads:
+    virtual:
+      enabled: true
+  ai:
+    google:
+      genai:
+        api-key: ${GOOGLE_API_KEY}
+        chat:
+          options:
+            model: ${ALTSTAY_MODEL:gemini-2.5-flash}
+            temperature: 0.3
+            max-output-tokens: 500
+
+altstay:
+  concierge:
+    max-history-turns: 20
+    max-message-chars: 1000
+    max-knowledge-base-chars: 20000
+    escalation-contact: "the property manager"
+    property-name: ${ALTSTAY_PROPERTY_NAME:AltStay Property}
+  cors:
+    allowed-origins: ${ALTSTAY_ALLOWED_ORIGINS:http://localhost:3000}
+
+logging:
+  level:
+    org.springframework.ai: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

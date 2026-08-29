@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: altstay-api-test
+  ai:
+    google:
+      genai:
+        api-key: ${GOOGLE_API_KEY}
+        chat:
+          options:
+            model: ${ALTSTAY_MODEL:gemini-2.5-flash}
+            temperature: 0.3
+            max-output-tokens: 500
+
+altstay:
+  concierge:
+    max-history-turns: 20
+    max-message-chars: 1000
+    max-knowledge-base-chars: 20000
+    escalation-contact: "the property manager"
+    property-name: "AltStay Test Property"
+  cors:
+    allowed-origins: "http://localhost:3000"
