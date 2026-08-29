@@ -74,6 +74,7 @@ export function ChatPanel({
           messages={messages}
           status={status}
           suggestedQuestions={suggestedQuestions}
+          disabled={isInputDisabled}
           onSelectQuestion={onSelectQuestion}
           onRetry={onRetry}
         />

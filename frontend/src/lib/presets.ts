@@ -9,12 +9,12 @@ export interface HostelPreset {
 
 export const HOSTEL_PRESETS: HostelPreset[] = [
   {
-    id: 'zostel-goa',
-    name: 'Zostel Plus Goa',
+    id: 'driftwood-goa',
+    name: 'Driftwood Beach Hostel',
     location: 'Mandrem, Goa',
-    propertyName: 'Zostel Plus Goa',
+    propertyName: 'Driftwood Beach Hostel',
     knowledgeBase: `## Property Overview
-Zostel Plus Goa is a boutique beachfront surf & backpacker hostel in Mandrem, North Goa.
+Driftwood Beach Hostel is a boutique beachfront surf & backpacker hostel in Mandrem, North Goa.
 
 ## Check-in & Check-out
 - Check-in time: from 2:00 PM to 11:00 PM. Early check-in subject to bed availability.
@@ -45,12 +45,12 @@ Zostel Plus Goa is a boutique beachfront surf & backpacker hostel in Mandrem, No
     ],
   },
   {
-    id: 'moustache-rishikesh',
-    name: 'Moustache Rishikesh',
+    id: 'riverbend-rishikesh',
+    name: 'Riverbend Rishikesh',
     location: 'Tapovan, Rishikesh',
-    propertyName: 'Moustache Riverside Rishikesh',
+    propertyName: 'Riverbend Riverside Rishikesh',
     knowledgeBase: `## Property Overview
-Moustache Rishikesh is a riverside retreat nestled in Tapovan with Ganges view and rooftop yoga shala.
+Riverbend Rishikesh is a riverside retreat nestled in Tapovan with Ganges view and rooftop yoga shala.
 
 ## Check-in & Check-out
 - Check-in time: from 1:00 PM.

@@ -25,13 +25,15 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.core.io.ByteArrayResource;
 
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -62,7 +64,7 @@ class ChatServiceTest {
 
     @BeforeEach
     void setUp() {
-        properties = new ConciergeProperties(3, 1000, 20000, "property manager", "AltStay Hostel");
+        properties = new ConciergeProperties(3, 1000, 20000, "property manager", "AltStay Hostel", Duration.ofSeconds(5), Duration.ofSeconds(20));
         ByteArrayResource resource = new ByteArrayResource(TEMPLATE_CONTENT.getBytes(StandardCharsets.UTF_8));
         promptFactory = new ConciergePromptFactory(resource, properties);
         chatService = new ChatService(chatClient, promptFactory, properties);
@@ -205,5 +207,77 @@ class ChatServiceTest {
         ChatRequest request = new ChatRequest("Check-in is 2 PM.", List.of(), "hello");
 
         assertThrows(ModelUnavailableException.class, () -> chatService.answer(request));
+    }
+
+    @Test
+    @DisplayName("Upstream model 429/quota exhaustion surfaces as ModelRateLimitedException")
+    void modelRateLimitThrowsModelRateLimitedException() {
+        when(chatClient.prompt(any(Prompt.class))).thenReturn(requestSpec);
+        when(requestSpec.call()).thenThrow(new RuntimeException("RESOURCE_EXHAUSTED: 429 quota exceeded for model"));
+
+        ChatRequest request = new ChatRequest("Check-in is 2 PM.", List.of(), "hello");
+
+        com.altstay.api.common.ModelRateLimitedException ex =
+                assertThrows(com.altstay.api.common.ModelRateLimitedException.class, () -> chatService.answer(request));
+        assertThat(ex.getMessage()).contains("rate limited or quota exhausted");
+    }
+
+    @Test
+    @DisplayName("Authenticated property-scoped call invokes conversation persistence service")
+    void authenticatedPropertyScopedCall_persistsConversation() {
+        mockChatClientResponse("Check-in is 2 PM.", "gemini-2.5-flash", 80, 15);
+        com.altstay.api.conversation.ConversationPersistenceService persistenceService =
+                org.mockito.Mockito.mock(com.altstay.api.conversation.ConversationPersistenceService.class);
+        chatService = new ChatService(chatClient, promptFactory, properties, java.util.Optional.of(persistenceService));
+
+        UUID tenantId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID propertyId = UUID.randomUUID();
+        UUID conversationId = UUID.randomUUID();
+
+        com.altstay.api.auth.TenantUserDetails principal = new com.altstay.api.auth.TenantUserDetails(
+                userId, tenantId, "hostel-slug", "staff@hostel.com", "hash", "Staff Member", true,
+                java.util.Set.of("FRONT_DESK")
+        );
+        org.springframework.security.core.Authentication auth =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(auth);
+
+        try {
+            // Bind the tenant the way production does. TenantContextFilter is what writes
+            // CurrentTenantHolder from the authenticated principal, and ChatService reads only that
+            // holder - deliberately, so there is exactly one path from a principal to a tenant id.
+            // A test that sets the SecurityContext alone would be asserting a path that does not
+            // exist outside the test.
+            com.altstay.api.tenancy.TenantContextTestSupport.runAs(tenantId, () -> {
+                ChatRequest request = new ChatRequest("AltStay Property", "KB", List.of(), "check-in?", propertyId, conversationId);
+                chatService.answer(request);
+            });
+
+            verify(persistenceService).persistTurns(
+                    org.mockito.ArgumentMatchers.eq(propertyId),
+                    org.mockito.ArgumentMatchers.eq(conversationId),
+                    org.mockito.ArgumentMatchers.eq("check-in?"),
+                    any(ChatResponse.class)
+            );
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    @DisplayName("Anonymous call does NOT invoke conversation persistence service")
+    void anonymousCall_doesNotPersistConversation() {
+        mockChatClientResponse("Check-in is 2 PM.", "gemini-2.5-flash", 80, 15);
+        com.altstay.api.conversation.ConversationPersistenceService persistenceService =
+                org.mockito.Mockito.mock(com.altstay.api.conversation.ConversationPersistenceService.class);
+        chatService = new ChatService(chatClient, promptFactory, properties, java.util.Optional.of(persistenceService));
+
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+
+        ChatRequest request = new ChatRequest("AltStay Property", "KB", List.of(), "check-in?", UUID.randomUUID(), null);
+        chatService.answer(request);
+
+        org.mockito.Mockito.verifyNoInteractions(persistenceService);
     }
 }

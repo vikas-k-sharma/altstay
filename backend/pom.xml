@@ -16,6 +16,11 @@
 	<description>AltStay Concierge API</description>
 	<properties>
 		<java.version>25</java.version>
+		<!-- Transitive via spring-ai-starter-model-google-genai, but imported directly by
+		     ChatClientConfig, so declared explicitly. Realign on a spring-ai upgrade. -->
+		<google-genai.version>1.65.0</google-genai.version>
+		<google-auth.version>1.33.0</google-auth.version>
+		<okhttp.version>4.12.0</okhttp.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -31,8 +36,70 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-starter-model-google-genai</artifactId>
+		</dependency>
+
+		<!--
+			Imported directly by ChatClientConfig, which builds the GenAI Client itself so the model call
+			gets real connect/read timeouts. These arrive transitively via the starter, but code that
+			imports a type must declare the dependency that provides it - otherwise a starter bump silently
+			breaks the build, or worse, silently changes the HTTP client's behaviour. Versions stay managed
+			pinned to whatever the starter resolved at the time of writing (verified with `mvn dependency:list`).
+			Neither the Boot parent nor the spring-ai BOM manages them, so the versions live in <properties>.
+			On a spring-ai upgrade, re-run dependency:list and realign these three.
+		-->
+		<dependency>
+			<groupId>com.google.genai</groupId>
+			<artifactId>google-genai</artifactId>
+			<version>${google-genai.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.auth</groupId>
+			<artifactId>google-auth-library-oauth2-http</artifactId>
+			<version>${google-auth.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.squareup.okhttp3</groupId>
+			<artifactId>okhttp</artifactId>
+			<version>${okhttp.version}</version>
+		</dependency>
+
+		<!--
+			Phase 4, Track A. Versions are managed by the Boot parent; do not pin them here.
+
+			Flyway needs its PostgreSQL module as a separate artifact from Flyway 10 onward —
+			flyway-core alone will start and then refuse to run against Postgres.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<!--
+			Boot 4 splits autoconfiguration into per-technology modules, and `spring-boot-flyway`
+			is NOT pulled transitively by flyway-core. Without it Flyway sits on the classpath and
+			never runs — migrations silently do not apply. Verified 2026-08-29 by dependency:list.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-flyway</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
 		</dependency>
 
 		<dependency>
@@ -48,6 +115,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

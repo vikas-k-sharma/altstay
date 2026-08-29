@@ -10,6 +10,7 @@ interface MessageListProps {
   messages: UiMessage[];
   status: ConversationStatus;
   suggestedQuestions: string[];
+  disabled?: boolean;
   onSelectQuestion: (question: string) => void;
   onRetry: (id: string) => void;
 }
@@ -18,6 +19,7 @@ export function MessageList({
   messages,
   status,
   suggestedQuestions,
+  disabled = false,
   onSelectQuestion,
   onRetry,
 }: MessageListProps) {
@@ -80,8 +82,9 @@ export function MessageList({
                   <button
                     key={i}
                     type="button"
+                    disabled={disabled}
                     onClick={() => onSelectQuestion(q)}
-                    className="w-full text-left px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-800/90 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700/80 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-all duration-150 shadow-xs active:scale-98 cursor-pointer"
+                    className="w-full text-left px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-800/90 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700/80 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-all duration-150 shadow-xs active:scale-98 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-zinc-200 dark:disabled:hover:border-zinc-700/80"
                   >
                     💬 {q}
                   </button>

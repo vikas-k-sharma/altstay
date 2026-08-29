@@ -4,8 +4,9 @@ A Property Management System for **alternative, hybrid-inventory stays** — hos
 retreat centres — entered through a lean wedge: an AI concierge that answers guest questions from
 a knowledge base the property owner can edit live.
 
-> **Status: Phase 2 of 3 (prototype).** Runs locally, single property, no database, no auth.
-> Not deployable yet. See [Roadmap](#roadmap).
+> **Status: Phase 3 engineering delivered; validation evidence not.** Runs locally, single
+> property, no database, no auth. Both suites are green; the two beta sessions have not happened,
+> so the R0 gate is **undecided** — see [`.plans/phase-3-review.md`](.plans/phase-3-review.md) §0.
 
 ## Why this exists
 
@@ -31,7 +32,7 @@ Browser  ──POST /api/chat──▶  Next.js BFF  ──POST /api/v1/chat─�
 ```
 
 The BFF exists so the API URL and credentials stay server-side, so CORS never enters the picture,
-and so auth and rate limiting have one obvious home in R1.
+and so auth, rate limiting, and session capture have one clean boundary.
 
 **The API is stateless.** Every request carries its own knowledge base and full conversation
 history. That's what makes "edit a rule on the right, see it reflected in the next message on the
@@ -39,7 +40,7 @@ left" work with no restart and no cache invalidation — which is the entire dem
 
 ```
 altstay/
-├─ .plans/      Phase plans, code reviews, product roadmap, dev runbook
+├─ .plans/      Phase plans, reviews, beta transcripts, roadmap, runbook
 ├─ backend/     Spring Boot 4.1.1 · Java 25 · Spring AI 2.0.1 · Gemini
 └─ frontend/    Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4
 ```
@@ -83,7 +84,7 @@ cd backend; .\mvnw.cmd clean verify
 cd frontend; npm run test; npm run build; npm run lint
 ```
 
-Both suites run offline with no API key. The backend's live Gemini test is opt-in:
+Both suites run offline with no API key. The live Gemini eval battery is opt-in:
 
 ```powershell
 $env:ALTSTAY_LIVE_TESTS="true"; .\mvnw.cmd verify
@@ -95,26 +96,28 @@ $env:ALTSTAY_LIVE_TESTS="true"; .\mvnw.cmd verify
 | --- | --- | --- |
 | 1 | Backend — stateless `POST /api/v1/chat` | delivered |
 | 2 | Frontend — split-pane console | delivered |
-| 3 | Guardrail tuning, edge cases, beta-tester sessions | next |
-| R1+ | Multi-tenancy, WhatsApp Cloud API, inventory, bookings | gated on Phase 3 evidence |
+| 3 | Guardrail tuning, edge cases, model timeouts, eval battery, beta sessions | engineering delivered; **beta sessions not yet run** |
+| R1+ | Multi-tenancy, WhatsApp Cloud API, server-side sessions, inventory, bookings | **gated** on real Phase 3 evidence |
 
-Phase 3 is not a coding phase. It's two hostel owners trying to break the AI, and **capturing
-every question they ask verbatim** — that transcript is the prompt-tuning input, the future
-regression suite, and the evidence for whether R1 is worth starting.
+Phase 3's gate is not a test suite. It is two hostel owners trying to break the AI, and **capturing
+every question they ask verbatim** — that transcript is the prompt-tuning input, the regression
+suite, and the evidence for whether R1 is worth starting. The capture machinery is built and
+working; the sessions have not happened, and the files currently in `.plans/phase-3-transcripts/`
+are synthetic fixtures.
 
-## Known limitations
+## Known limitations (for R1)
 
-Deliberate for a prototype, blocking for a deploy:
+Deliberate for a prototype, blocking for production deployment:
 
 - **No auth or rate limiting.** Both endpoints are open and cost money per call.
 - **Conversation history is client-supplied and trusted**, so a caller can fabricate assistant
-  turns and bypass the prompt guardrails.
-- **No timeout on the model call.** The BFF aborts at 25s; the backend thread stays parked.
+  turns (`injection-history`). Server-side session store in R1 will address this.
 - Single property, no database, knowledge base lives in the browser's `localStorage`.
-- The Gemini API key is currently hardcoded in `application.yaml` for local development.
+- **`GOOGLE_API_KEY` must be set as an environment variable.** There is no default in any tracked
+  file, so the app fails at startup without it.
+- **Model calls time out at 20s** (5s connect), inside the BFF's 25s budget, surfacing as a 502.
 
-Tracked in [`.plans/phase-1-review.md`](.plans/phase-1-review.md) and
-[`.plans/phase-2-review.md`](.plans/phase-2-review.md).
+Tracked in [`.plans/phase-1-review.md`](.plans/phase-1-review.md), [`.plans/phase-2-review.md`](.plans/phase-2-review.md), and [`.plans/phase-3-review.md`](.plans/phase-3-review.md).
 
 ## Documentation
 
@@ -125,3 +128,5 @@ Tracked in [`.plans/phase-1-review.md`](.plans/phase-1-review.md) and
 | [`.plans/dev-runbook.md`](.plans/dev-runbook.md) | Local setup and layer-by-layer verification |
 | [`.plans/phase-1-backend-ai.md`](.plans/phase-1-backend-ai.md) | Backend plan — **§4 is the canonical API contract** |
 | [`.plans/phase-2-frontend.md`](.plans/phase-2-frontend.md) | Frontend plan |
+| [`.plans/phase-3-validation.md`](.plans/phase-3-validation.md) | Phase 3 validation specification |
+| [`.plans/phase-3-review.md`](.plans/phase-3-review.md) | **Phase 3 review & R0 release gate signoff** |

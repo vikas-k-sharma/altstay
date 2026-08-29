@@ -63,6 +63,95 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(problemDetail);
     }
 
+    @ExceptionHandler(ModelRateLimitedException.class)
+    public ResponseEntity<ProblemDetail> handleModelRateLimitedException(
+            ModelRateLimitedException ex,
+            WebRequest request) {
+
+        log.warn("AI model rate limited / quota exhausted: {}", ex.getMessage());
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "The upstream AI model is rate limited or quota exhausted. Please try again later."
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "model-rate-limited"));
+        problemDetail.setTitle("Model Rate Limited");
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(problemDetail);
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ProblemDetail> handleAuthenticationException(
+            org.springframework.security.core.AuthenticationException ex,
+            WebRequest request) {
+
+        // The detail is a constant on purpose. Echoing the exception message distinguishes
+        // "wrong password" from "account is inactive" from "no such user", which turns the login
+        // endpoint into an oracle for which emails are registered against a workspace.
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNAUTHORIZED,
+                "Invalid credentials"
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "unauthorized"));
+        problemDetail.setTitle("Unauthorized");
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problemDetail);
+    }
+
+    @ExceptionHandler(com.altstay.api.tenancy.MissingTenantException.class)
+    public ResponseEntity<ProblemDetail> handleMissingTenantException(
+            com.altstay.api.tenancy.MissingTenantException ex,
+            WebRequest request) {
+
+        log.warn("Missing tenant context: {}", ex.getMessage());
+
+        // Logged above for the operator; not echoed to the client, which has no use for the name
+        // of an internal aspect and should not be told one exists.
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNAUTHORIZED,
+                "Authentication is required for this resource"
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "missing-tenant"));
+        problemDetail.setTitle("Missing Tenant Context");
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problemDetail);
+    }
+
+    @ExceptionHandler({
+            org.springframework.security.authorization.AuthorizationDeniedException.class,
+            org.springframework.security.access.AccessDeniedException.class
+    })
+    public ResponseEntity<ProblemDetail> handleAccessDeniedException(
+            Exception ex,
+            WebRequest request) {
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.FORBIDDEN,
+                "Access is denied: insufficient role privileges"
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "forbidden"));
+        problemDetail.setTitle("Forbidden");
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problemDetail);
+    }
+
+    @ExceptionHandler(com.altstay.api.knowledgebase.KnowledgeBaseConflictException.class)
+    public ResponseEntity<ProblemDetail> handleKnowledgeBaseConflictException(
+            com.altstay.api.knowledgebase.KnowledgeBaseConflictException ex,
+            WebRequest request) {
+
+        log.warn("Knowledge base version conflict: {}", ex.getMessage());
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                ex.getMessage() != null ? ex.getMessage() : "Someone else saved first"
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "knowledge-base-conflict"));
+        problemDetail.setTitle("Knowledge Base Conflict");
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleGenericException(
             Exception ex,

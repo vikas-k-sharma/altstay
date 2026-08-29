@@ -7,6 +7,7 @@ import com.altstay.api.chat.dto.Role;
 import com.altstay.api.chat.dto.TokenUsage;
 import com.altstay.api.common.GlobalExceptionHandler;
 import com.altstay.api.common.ModelUnavailableException;
+import com.altstay.api.config.SecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = ChatController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityConfig.class})
 class ChatControllerTest {
 
     @Autowired
@@ -38,6 +39,14 @@ class ChatControllerTest {
 
     @MockitoBean
     private ChatService chatService;
+
+    @MockitoBean
+    private com.altstay.api.ratelimit.RateLimiter rateLimiter;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        when(rateLimiter.tryConsume(any(), any())).thenReturn(com.altstay.api.ratelimit.ConsumptionResult.allow());
+    }
 
     @Test
     @DisplayName("Happy path returns 200 OK with expected JSON response structure")
@@ -137,5 +146,106 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.title").value("Model Unavailable"))
                 .andExpect(jsonPath("$.status").value(502))
                 .andExpect(jsonPath("$.stackTrace").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("Standing guard (§0.1 constraint 1): POST /api/v1/chat succeeds with NO credentials or session")
+    void anonymousPostChatSucceedsWithNoCredentials() throws Exception {
+        when(rateLimiter.tryConsume(any(), any())).thenReturn(com.altstay.api.ratelimit.ConsumptionResult.allow());
+
+        ChatResponse expectedResponse = new ChatResponse(
+                "Check-in is from 2 PM.",
+                false,
+                "gemini-2.5-flash",
+                new TokenUsage(150, 20, 170),
+                350L
+        );
+        when(chatService.answer(any(ChatRequest.class))).thenReturn(expectedResponse);
+
+        ChatRequest request = new ChatRequest(
+                "Check-in is 2 PM.",
+                List.of(),
+                "what time is check-in?"
+        );
+
+        mockMvc.perform(post("/api/v1/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.reply").value("Check-in is from 2 PM."))
+                .andExpect(jsonPath("$.escalated").value(false));
+    }
+
+    @Test
+    @DisplayName("Rate limit exceeded returns 429 Too Many Requests with Retry-After header and distinct copy")
+    void rateLimitExceeded_returns429ProblemDetailWithRetryAfter() throws Exception {
+        when(rateLimiter.tryConsume(any(), any()))
+                .thenReturn(com.altstay.api.ratelimit.ConsumptionResult.reject(6));
+
+        ChatRequest request = new ChatRequest(
+                "Check-in is 2 PM.",
+                List.of(),
+                "what time is check-in?"
+        );
+
+        mockMvc.perform(post("/api/v1/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-altstay-session", "test-session-rate-limit")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Retry-After", "6"))
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type").value("https://api.altstay.com/errors/rate-limited"))
+                .andExpect(jsonPath("$.title").value("Too Many Requests"))
+                .andExpect(jsonPath("$.status").value(429))
+                .andExpect(jsonPath("$.detail").value("One moment — catching up."));
+    }
+
+    @Test
+    @DisplayName("Upstream 429 (ModelRateLimitedException) returns 503 Service Unavailable ('The concierge is paused right now')")
+    void upstreamRateLimit_returns503ProblemDetail() throws Exception {
+        when(rateLimiter.tryConsume(any(), any())).thenReturn(com.altstay.api.ratelimit.ConsumptionResult.allow());
+        when(chatService.answer(any(ChatRequest.class)))
+                .thenThrow(new com.altstay.api.common.ModelRateLimitedException("Quota exhausted"));
+
+        ChatRequest request = new ChatRequest(
+                "Check-in is 2 PM.",
+                List.of(),
+                "what time is check-in?"
+        );
+
+        mockMvc.perform(post("/api/v1/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type").value("https://api.altstay.com/errors/model-rate-limited"))
+                .andExpect(jsonPath("$.title").value("Model Rate Limited"))
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.detail").value("The upstream AI model is rate limited or quota exhausted. Please try again later."));
+    }
+
+    @Test
+    @DisplayName("x-altstay-session header never reaches CurrentTenantHolder and cannot escalate tenant")
+    void sessionHeader_neverReachesCurrentTenantHolder() throws Exception {
+        when(rateLimiter.tryConsume(any(), any())).thenReturn(com.altstay.api.ratelimit.ConsumptionResult.allow());
+        when(chatService.answer(any(ChatRequest.class))).thenAnswer(invocation -> {
+            // Assert that inside the controller invocation, CurrentTenantHolder is empty
+            org.assertj.core.api.Assertions.assertThat(com.altstay.api.tenancy.CurrentTenantHolder.get()).isEmpty();
+            return new ChatResponse("Check-in is 2 PM.", false, "model", new TokenUsage(10, 10, 20), 100L);
+        });
+
+        ChatRequest request = new ChatRequest(
+                "Check-in is 2 PM.",
+                List.of(),
+                "what time is check-in?"
+        );
+
+        mockMvc.perform(post("/api/v1/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-altstay-session", "session-attacker-controlled-tenant-attempt")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
     }
 }

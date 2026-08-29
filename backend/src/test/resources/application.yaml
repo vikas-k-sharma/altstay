@@ -1,6 +1,40 @@
 spring:
   application:
     name: altstay-api-test
+  # Same import as the main file, and for the same reason it is `optional:`.
+  #
+  # This file REPLACES src/main/resources/application.yaml on the test classpath rather than merging
+  # with it, so without this line the import declared over there does not apply here - and local
+  # settings that look global are silently absent from every test. That is exactly how a model
+  # change to `gemini-2.5-flash-lite` landed in .env.properties, took effect in the running app, and
+  # left ChatLiveIT still calling gemini-2.5-flash until it hit that model's 20-per-day limit.
+  #
+  # It supplies ALTSTAY_* placeholder values only. It does NOT define spring.datasource.url, so the
+  # @ConditionalOnProperty beans stay off and the offline invariant is untouched: with the file
+  # absent, every placeholder below still falls back exactly as before.
+  config:
+    import: optional:file:./.env.properties
+  # THE OFFLINE INVARIANT. `mvnw clean verify` must pass with no network, no GOOGLE_API_KEY, and no
+  # ALTSTAY_DB_* set — a Phase 1 property that must not regress (see CLAUDE.md).
+  #
+  # spring-boot-starter-data-jpa would otherwise auto-configure a DataSource, find no URL, and fail
+  # every context load. Excluding the three autoconfigurations keeps the default suite database-free.
+  #
+  # Database tests do NOT inherit this file's exclusions: TenantIsolationIT runs under its own
+  # profile, gated on ALTSTAY_DB_TESTS=true. If a plain `verify` ever needs the database, something
+  # here has been undone.
+  # NOTE THE PACKAGES. Boot 4 moved autoconfiguration into per-technology modules:
+  # `boot.jdbc.autoconfigure`, NOT the Boot 3 `boot.autoconfigure.jdbc`. The old names are what
+  # most training data and most blog posts still say, they fail silently as exclusions, and the
+  # first symptom is every @SpringBootTest failing on "Failed to determine a suitable driver class".
+  # Names verified 2026-08-29 by reading AutoConfiguration.imports out of the resolved jars.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
+      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+  flyway:
+    enabled: false
   ai:
     google:
       genai:
@@ -10,6 +44,8 @@ spring:
             model: ${ALTSTAY_MODEL:gemini-2.5-flash}
             temperature: 0.3
             max-output-tokens: 500
+    retry:
+      max-attempts: 0
 
 altstay:
   concierge:
@@ -18,5 +54,21 @@ altstay:
     max-knowledge-base-chars: 20000
     escalation-contact: "the property manager"
     property-name: "AltStay Test Property"
+    model-connect-timeout: 5s
+    model-read-timeout: 20s
   cors:
     allowed-origins: "http://localhost:3000"
+  rate-limit:
+    anonymous-session-burst: 10
+    anonymous-session-refill-duration: 6s
+    anonymous-global-burst: 60
+    anonymous-global-refill-duration: 1s
+    authenticated-tenant-burst: 60
+    authenticated-tenant-refill-duration: 1s
+    max-entries: 10000
+    entry-ttl: 1h
+
+management:
+  endpoint:
+    health:
+      show-details: when-authorized
