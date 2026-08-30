@@ -1,0 +1,10 @@
+{
+  "id": "9a450948-2937-4075-8732-6c57ed89cfda",
+  "tenantId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "propertyId": "7ed13bba-74e2-4608-83c6-bedb10b9e5bd",
+  "roomTypeId": "d812b0fb-cd5d-4ed7-a4d2-0a12caf6b118",
+  "code": "STANDARD",
+  "name": "Standard rate",
+  "isDefault": true,
+  "isActive": true
+}

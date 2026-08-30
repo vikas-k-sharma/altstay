@@ -87,7 +87,7 @@ class KnowledgeBaseServiceTest {
     @Test
     @DisplayName("save produces exactly one new version row and repoints current_version_id")
     void save_producesNewVersion_repointsCurrentVersionId() {
-        Property property = new Property(tenantId, "Goa Beach", "goa-beach");
+        Property property = new Property(tenantId, "Goa Beach", "goa-beach", "Asia/Kolkata", "INR");
         when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
 
         UUID kbId = UUID.randomUUID();
@@ -122,7 +122,7 @@ class KnowledgeBaseServiceTest {
     @Test
     @DisplayName("save with unchanged content produces NO new version and returns existing version")
     void save_withUnchangedContent_producesNoNewVersion_returnsExisting() {
-        Property property = new Property(tenantId, "Goa Beach", "goa-beach");
+        Property property = new Property(tenantId, "Goa Beach", "goa-beach", "Asia/Kolkata", "INR");
         when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
 
         String content = "Standard house rules content";
@@ -155,7 +155,7 @@ class KnowledgeBaseServiceTest {
     @Test
     @DisplayName("save allocates sequential version numbers based on coalesce(max(version_no), 0) + 1")
     void save_allocatesSequentialVersionNumbers() {
-        Property property = new Property(tenantId, "Goa Beach", "goa-beach");
+        Property property = new Property(tenantId, "Goa Beach", "goa-beach", "Asia/Kolkata", "INR");
         when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
 
         UUID kbId = UUID.randomUUID();
@@ -183,7 +183,7 @@ class KnowledgeBaseServiceTest {
     @Test
     @DisplayName("authored_by is derived from authenticated principal and is never null")
     void save_authoredByNeverNull() {
-        Property property = new Property(tenantId, "Goa Beach", "goa-beach");
+        Property property = new Property(tenantId, "Goa Beach", "goa-beach", "Asia/Kolkata", "INR");
         when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
 
         UUID kbId = UUID.randomUUID();
@@ -217,7 +217,7 @@ class KnowledgeBaseServiceTest {
     @Test
     @DisplayName("application-level tenant check: rejects foreign property when repository is mocked (defence in depth)")
     void applicationLevelTenantCheck_rejectsForeignProperty_whenRepoMocked() {
-        Property foreignProperty = new Property(foreignTenantId, "Foreign Beach", "foreign-beach");
+        Property foreignProperty = new Property(foreignTenantId, "Foreign Beach", "foreign-beach", "Asia/Kolkata", "INR");
         when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(foreignProperty));
 
         assertThatThrownBy(() ->
@@ -230,7 +230,7 @@ class KnowledgeBaseServiceTest {
     @Test
     @DisplayName("application-level tenant check: rejects foreign knowledge base when repository is mocked")
     void applicationLevelTenantCheck_rejectsForeignKnowledgeBase_whenRepoMocked() {
-        Property property = new Property(tenantId, "Goa Beach", "goa-beach");
+        Property property = new Property(tenantId, "Goa Beach", "goa-beach", "Asia/Kolkata", "INR");
         when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
 
         KnowledgeBase foreignKb = new KnowledgeBase(foreignTenantId, propertyId);
@@ -281,7 +281,7 @@ class KnowledgeBaseServiceTest {
     @Test
     @DisplayName("concurrent save: retry once succeeds after first attempt DataIntegrityViolationException")
     void concurrentSave_retriesOnceAndSucceeds() {
-        Property property = new Property(tenantId, "Goa Beach", "goa-beach");
+        Property property = new Property(tenantId, "Goa Beach", "goa-beach", "Asia/Kolkata", "INR");
         when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
 
         UUID kbId = UUID.randomUUID();
@@ -314,7 +314,7 @@ class KnowledgeBaseServiceTest {
     @Test
     @DisplayName("concurrent save: second violation throws KnowledgeBaseConflictException (409)")
     void concurrentSave_secondViolationThrowsKnowledgeBaseConflictException() {
-        Property property = new Property(tenantId, "Goa Beach", "goa-beach");
+        Property property = new Property(tenantId, "Goa Beach", "goa-beach", "Asia/Kolkata", "INR");
         when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
 
         UUID kbId = UUID.randomUUID();

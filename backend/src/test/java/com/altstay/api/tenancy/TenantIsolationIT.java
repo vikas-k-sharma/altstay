@@ -110,7 +110,7 @@ class TenantIsolationIT {
             ps.execute();
         }
         try (PreparedStatement ps = c.prepareStatement(
-                "insert into property (tenant_id, name, slug) values (?, ?, ?)")) {
+                "insert into property (tenant_id, name, slug, timezone, currency_code) values (?, ?, ?, 'Asia/Kolkata', 'INR')")) {
             ps.setObject(1, tenant);
             ps.setString(2, "Property " + slug);
             ps.setString(3, slug);
@@ -198,7 +198,7 @@ class TenantIsolationIT {
             // boundary it cannot read across.
             assertThatThrownBy(() -> {
                 try (PreparedStatement ps = c.prepareStatement(
-                        "insert into property (tenant_id, name, slug) values (?, ?, ?)")) {
+                        "insert into property (tenant_id, name, slug, timezone, currency_code) values (?, ?, ?, 'Asia/Kolkata', 'INR')")) {
                     ps.setObject(1, TENANT_B);
                     ps.setString(2, "smuggled");
                     ps.setString(3, "smuggled-" + UUID.randomUUID());

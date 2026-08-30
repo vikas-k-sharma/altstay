@@ -91,7 +91,7 @@ class KnowledgeBaseControllerTest {
         when(knowledgeBaseService.save(eq(propertyId), eq("Updated rules"))).thenReturn(version);
 
         mockMvc.perform(post("/api/v1/properties/{propertyId}/knowledge-base", propertyId)
-                        .with(user("staff@sunset.com").roles("FRONT_DESK"))
+                        .with(user("manager@sunset.com").roles("MANAGER"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"Updated rules\"}"))
                 .andExpect(status().isOk())
@@ -100,10 +100,37 @@ class KnowledgeBaseControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/v1/properties/{propertyId}/knowledge-base as FRONT_DESK returns 403 Forbidden")
+    void save_asFrontDesk_returns403() throws Exception {
+        // §8's role matrix: editing the knowledge base is OWNER/MANAGER. The front desk reads it to
+        // answer a guest; changing the property's published rules is not their call. Enforced on
+        // the server, not by the console hiding a button.
+        mockMvc.perform(post("/api/v1/properties/{propertyId}/knowledge-base", propertyId)
+                        .with(user("staff@sunset.com").roles("FRONT_DESK"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"Updated rules\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/properties/{propertyId}/knowledge-base as FRONT_DESK still returns 200 OK")
+    void getCurrent_asFrontDesk_returns200() throws Exception {
+        KnowledgeBaseVersion version = new KnowledgeBaseVersion(
+                tenantId, kbId, 1, "House rules", "sha", 11, userId
+        );
+        version.setId(versionId);
+        when(knowledgeBaseService.getCurrent(eq(propertyId))).thenReturn(java.util.Optional.of(version));
+
+        mockMvc.perform(get("/api/v1/properties/{propertyId}/knowledge-base", propertyId)
+                        .with(user("staff@sunset.com").roles("FRONT_DESK")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("POST /api/v1/properties/{propertyId}/knowledge-base when content is blank returns 400 Bad Request")
     void save_whenContentIsBlank_returns400() throws Exception {
         mockMvc.perform(post("/api/v1/properties/{propertyId}/knowledge-base", propertyId)
-                        .with(user("staff@sunset.com").roles("FRONT_DESK"))
+                        .with(user("manager@sunset.com").roles("MANAGER"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"   \"}"))
                 .andExpect(status().isBadRequest())
@@ -116,7 +143,7 @@ class KnowledgeBaseControllerTest {
     void save_whenContentExceeds20000Chars_returns400() throws Exception {
         String largeContent = "a".repeat(20001);
         mockMvc.perform(post("/api/v1/properties/{propertyId}/knowledge-base", propertyId)
-                        .with(user("staff@sunset.com").roles("FRONT_DESK"))
+                        .with(user("manager@sunset.com").roles("MANAGER"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"" + largeContent + "\"}"))
                 .andExpect(status().isBadRequest())
@@ -131,7 +158,7 @@ class KnowledgeBaseControllerTest {
                 .thenThrow(new KnowledgeBaseConflictException("Someone else saved first"));
 
         mockMvc.perform(post("/api/v1/properties/{propertyId}/knowledge-base", propertyId)
-                        .with(user("staff@sunset.com").roles("FRONT_DESK"))
+                        .with(user("manager@sunset.com").roles("MANAGER"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"Concurrent save\"}"))
                 .andExpect(status().isConflict())

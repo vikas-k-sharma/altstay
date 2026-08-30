@@ -1,0 +1,14 @@
+{
+  "id": "d812b0fb-cd5d-4ed7-a4d2-0a12caf6b118",
+  "tenantId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "propertyId": "7ed13bba-74e2-4608-83c6-bedb10b9e5bd",
+  "code": "MIXED-6",
+  "name": "6-bed mixed dorm",
+  "saleMode": "PER_UNIT",
+  "kind": "DORM",
+  "maxOccupancy": 6,
+  "baseRateMinor": 65000,
+  "description": null,
+  "isActive": true,
+  "spaceIds": ["c7fcafeb-695e-4a53-b221-a8933baea200"]
+}

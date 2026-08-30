@@ -1,0 +1,53 @@
+{
+  "propertyId": "7ed13bba-74e2-4608-83c6-bedb10b9e5bd",
+  "propertySlug": "driftwood-goa",
+  "date": "2026-08-30",
+  "arrivals": [
+    {
+      "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "reference": "ALTARRIV01",
+      "propertyId": "7ed13bba-74e2-4608-83c6-bedb10b9e5bd",
+      "guestId": "c7f72790-b9d3-405e-abbc-748a7ed7ccf9",
+      "guest": {
+        "id": "c7f72790-b9d3-405e-abbc-748a7ed7ccf9",
+        "fullName": "Neha Kapoor",
+        "email": null,
+        "phone": null,
+        "countryCode": null,
+        "dateOfBirth": null,
+        "notes": null
+      },
+      "status": "BOOKED",
+      "source": "WEBSITE",
+      "checkIn": "2026-08-30",
+      "checkOut": "2026-09-01",
+      "adults": 1,
+      "children": 0,
+      "currencyCode": "INR",
+      "subtotalMinor": 130000,
+      "taxMinor": 15600,
+      "totalMinor": 145600,
+      "amountPaidMinor": 0,
+      "paymentState": "UNPAID",
+      "idempotencyKey": null,
+      "notes": null,
+      "lines": [
+        {
+          "id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
+          "roomTypeId": "d812b0fb-cd5d-4ed7-a4d2-0a12caf6b118",
+          "roomTypeCode": "MIXED-6",
+          "spaceId": null,
+          "checkIn": "2026-08-30",
+          "checkOut": "2026-09-01",
+          "unitCount": 1,
+          "amountMinor": 130000
+        }
+      ],
+      "allocations": [],
+      "statusHistory": [],
+      "earlyCheckIn": false
+    }
+  ],
+  "departures": [],
+  "inHouse": []
+}

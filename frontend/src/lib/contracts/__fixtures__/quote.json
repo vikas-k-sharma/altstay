@@ -1,0 +1,11 @@
+{
+  "subtotalMinor": 195000,
+  "taxMinor": 23400,
+  "totalMinor": 218400,
+  "currencyCode": "INR",
+  "nightlyRates": [
+    { "date": "2026-08-30", "rateMinor": 65000 },
+    { "date": "2026-08-31", "rateMinor": 65000 },
+    { "date": "2026-09-01", "rateMinor": 65000 }
+  ]
+}

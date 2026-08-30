@@ -1,0 +1,13 @@
+{
+  "id": "c7fcafeb-695e-4a53-b221-a8933baea200",
+  "tenantId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "propertyId": "7ed13bba-74e2-4608-83c6-bedb10b9e5bd",
+  "name": "101",
+  "floor": "1",
+  "isActive": true,
+  "capacity": 2,
+  "units": [
+    { "id": "c7f72790-b9d3-405e-abbc-748a7ed7ccf9", "tenantId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d", "spaceId": "c7fcafeb-695e-4a53-b221-a8933baea200", "label": "Bed 1", "unitKind": "BUNK_TOP", "isActive": true },
+    { "id": "7ed13bba-74e2-4608-83c6-bedb10b9e5bd", "tenantId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d", "spaceId": "c7fcafeb-695e-4a53-b221-a8933baea200", "label": "Bed 2", "unitKind": "BUNK_BOTTOM", "isActive": true }
+  ]
+}

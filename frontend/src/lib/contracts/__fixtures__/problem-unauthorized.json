@@ -1,0 +1,7 @@
+{
+  "type": "https://api.altstay.com/errors/unauthorized",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Invalid credentials",
+  "instance": null
+}

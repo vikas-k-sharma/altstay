@@ -112,6 +112,31 @@ These have each caused a real bug or a failed build. Verify before contradicting
   from an authenticated principal. `set`/`clear` are package-private so nothing else can; tests bind
   through `TenantContextTestSupport` in `src/test`. Keep it that way - it is what makes roadmap
   §4.1's "the tenant id must never be a client-supplied value" a property of the code.
+- **A JPA `save()` does not hit the database until flush, so `allocation_no_overlap` fires at
+  *commit* — outside the service, after the method returned.** The losing side of a booking race
+  then surfaces as an unhandled `DataIntegrityViolationException` and renders as a **500 with a
+  Postgres constraint name in it**, which is both the wrong status and a schema leak. Allocations
+  are written with `saveAndFlush` so the violation happens where it can be translated into a 409
+  a human can act on. Any new write that a database constraint is supposed to guard needs the same
+  treatment.
+- **The PostgreSQL driver is a `runtime` dependency and is not on the compile classpath.** Writing
+  `catch (PSQLException e)` or `instanceof org.postgresql.util.PSQLException` compiles in an IDE and
+  fails the Maven build. Pull what you need out of the message or the SQLState instead — and never
+  log a `DataIntegrityViolationException`'s message whole: PostgreSQL appends
+  `Detail: Failing row contains (…)`, so for `guest` that publishes a real person's name, email and
+  phone to the log.
+- **`ALTER TABLE … DROP CONSTRAINT` is transactional in PostgreSQL.** To watch a constraint-backed
+  test fail, drop the constraint inside a transaction and roll back — the schema is never really
+  altered, nothing is left unprotected if the run dies, and the demonstration becomes a test that
+  re-runs on every build instead of a manual ritual whose pasted output has to be trusted.
+  `AllocationConstraintIT` case 11 is the pattern. This does not work across connections, so a
+  multi-threaded race test cannot use it.
+- **A randomized test is worth exactly as much as the independence of its oracle.** Phase 5 shipped
+  an `AvailabilityCalculatorPropertyTest` whose "brute-force oracle" was the implementation's own
+  per-day loop copied into the test: 250 iterations comparing an algorithm to itself, incapable of
+  failing. The oracle must reach the answer a structurally different way — the current one
+  materializes occupancy night by night where the implementation carries sorted event deltas.
+  **Before trusting any test, ask what it would have to see to fail.**
 - Build needs `JAVA_HOME` on **JDK 25**; Node lives at `C:\Program Files\nodejs` and is not always
   on PATH.
 
@@ -167,6 +192,25 @@ an unbound connection returned both tenants' rows.
   `GOOGLE_API_KEY` and all three `ALTSTAY_DB_*` unset — 84 unit + `ModelTimeoutIT` run,
   `TenantIsolationIT`'s 5 skip. DB tests are opt-in behind `ALTSTAY_DB_TESTS=true`, and the test
   `application.yaml` excludes the DataSource/Hibernate/Flyway autoconfigurations to keep it that way.
+
+**Phase 5 — the PMS core — delivered and reviewed 2026-08-30.** Migrations V6–V11 applied to Neon.
+`mvnw clean verify` is **177 unit + 53 IT**, green both offline (with `GOOGLE_API_KEY`, all three
+`ALTSTAY_DB_*` unset and `.env.properties` moved aside) and with `ALTSTAY_DB_TESTS=true` against
+Neon. The review found **18 issues in delivered, green code** — all fixed, listed in
+[phase-5-pms-core.md](.plans/phase-5-pms-core.md) § Review and fixes. The ones worth carrying
+forward:
+
+- **Four Definition-of-Done boxes were ticked on claims that were not true**, including a pasted
+  "watched failing first" record naming a test method that does not exist in the repository. Treat
+  a ticked box as a claim to verify, not a fact — the same discipline `phase-3-review.md` §0 already
+  had to apply to the synthetic transcripts.
+- **The concierge still cannot read this inventory, deliberately.** `ChatService`, `ChatController`,
+  `concierge-system.st` and `frontend/src/components` are untouched — `git diff --stat` over those
+  paths is empty and that is a standing invariant until the R0 gate answers.
+- **Phase 6 is unblocked**, but `GET /api/v1/properties/{slug}/front-desk`, the booking list
+  filters, and `bookableWholeSpaces` on the availability response were all added *during the
+  review*. Anything Phase 6 assumes about the API should be checked against the code, not against
+  phase-5's §9 table.
 
 **Session-critical, due before October** — Phase 3 debt found in the 2026-08-29 dry run, listed in
 [.plans/phase-4-foundations.md](.plans/phase-4-foundations.md) §7:

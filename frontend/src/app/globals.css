@@ -3,6 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* phase-6 §8.1 — additive only; the pair above is untouched. */
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
+  --border: #e4e4e7;
+  --text-muted: #71717a;
+  --accent: #059669;
+  --danger: #dc2626;
+  --warning: #d97706;
+  --success: #16a34a;
 }
 
 @theme inline {
@@ -10,12 +20,30 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    --surface: #18181b;
+    --surface-muted: #27272a;
+    --border: #3f3f46;
+    --text-muted: #a1a1aa;
+    --accent: #34d399;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --success: #4ade80;
   }
 }
 

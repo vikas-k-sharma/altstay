@@ -152,6 +152,206 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
     }
 
+    @ExceptionHandler(com.altstay.api.booking.InvalidBookingTransitionException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidBookingTransitionException(
+            com.altstay.api.booking.InvalidBookingTransitionException ex,
+            WebRequest request) {
+
+        log.warn("Invalid booking transition: reference={}, from={}, to={}", ex.getReference(), ex.getFromStatus(), ex.getToStatus());
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "invalid-booking-transition"));
+        problemDetail.setTitle("Invalid Booking Transition");
+        problemDetail.setProperty("reference", ex.getReference());
+        problemDetail.setProperty("fromStatus", ex.getFromStatus() != null ? ex.getFromStatus().name() : null);
+        problemDetail.setProperty("toStatus", ex.getToStatus().name());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+    }
+
+    @ExceptionHandler(com.altstay.api.booking.BookingNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleBookingNotFoundException(
+            com.altstay.api.booking.BookingNotFoundException ex,
+            WebRequest request) {
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "not-found"));
+        problemDetail.setTitle("Not Found");
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problemDetail);
+    }
+
+    @ExceptionHandler(com.altstay.api.booking.NoAvailabilityException.class)
+    public ResponseEntity<ProblemDetail> handleNoAvailabilityException(
+            com.altstay.api.booking.NoAvailabilityException ex,
+            WebRequest request) {
+
+        log.warn("No availability: {}", ex.getMessage());
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "no-availability"));
+        problemDetail.setTitle("No Availability");
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+    }
+
+    @ExceptionHandler(com.altstay.api.booking.BookingConflictException.class)
+    public ResponseEntity<ProblemDetail> handleBookingConflictException(
+            com.altstay.api.booking.BookingConflictException ex,
+            WebRequest request) {
+
+        log.warn("Booking conflict: {}", ex.getMessage());
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "booking-conflict"));
+        problemDetail.setTitle("Booking Conflict");
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+    }
+
+    @ExceptionHandler(com.altstay.api.booking.GuestNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleGuestNotFoundException(
+            com.altstay.api.booking.GuestNotFoundException ex,
+            WebRequest request) {
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "not-found"));
+        problemDetail.setTitle("Not Found");
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problemDetail);
+    }
+
+    @ExceptionHandler(com.altstay.api.booking.UnknownRoomTypeException.class)
+    public ResponseEntity<ProblemDetail> handleUnknownRoomTypeException(
+            com.altstay.api.booking.UnknownRoomTypeException ex,
+            WebRequest request) {
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "unknown-room-type"));
+        problemDetail.setTitle("Unknown Room Type");
+        problemDetail.setProperty("roomTypeId", ex.getRoomTypeId() != null ? ex.getRoomTypeId().toString() : null);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problemDetail);
+    }
+
+    @ExceptionHandler(com.altstay.api.booking.RateCurrencyMismatchException.class)
+    public ResponseEntity<ProblemDetail> handleRateCurrencyMismatchException(
+            com.altstay.api.booking.RateCurrencyMismatchException ex,
+            WebRequest request) {
+
+        log.warn("Rate currency mismatch: expected={}, actual={}", ex.getExpectedCurrency(), ex.getActualCurrency());
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "rate-currency-mismatch"));
+        problemDetail.setTitle("Rate Currency Mismatch");
+        problemDetail.setProperty("expectedCurrency", ex.getExpectedCurrency());
+        problemDetail.setProperty("actualCurrency", ex.getActualCurrency());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+    }
+
+    /**
+     * Last line of defence for a database constraint that reached the wire untranslated.
+     *
+     * <p>{@code BookingService} turns an {@code allocation_no_overlap} violation into a
+     * {@link com.altstay.api.booking.BookingConflictException} at the point it happens, which is
+     * where the good error message comes from. This handler exists because the default for anything
+     * it misses is the catch-all below: a <b>500</b> carrying a Postgres constraint name, which is
+     * both the wrong status for a lost race and a schema leak.
+     *
+     * <p>The detail is deliberately generic and the log line carries only the constraint name —
+     * never the failing row, which for {@code guest} would be personal data (roadmap §6).
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ProblemDetail> handleDataIntegrityViolation(
+            org.springframework.dao.DataIntegrityViolationException ex,
+            WebRequest request) {
+
+        String constraint = constraintNameOf(ex);
+        log.warn("Database constraint violated: constraint={}", constraint);
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                "That change conflicts with something already recorded. Re-check the current state and try again."
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "booking-conflict"));
+        problemDetail.setTitle("Conflict");
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+    }
+
+    /**
+     * Pulls out only the constraint name, never the message.
+     *
+     * <p>The message must not be logged whole: PostgreSQL appends {@code "Detail: Failing row
+     * contains (...)"}, so for {@code guest} it carries the guest's name, email and phone. A
+     * regex over the quoted constraint token gets what is useful for diagnosis and leaves the row
+     * behind.
+     *
+     * <p>Deliberately no reference to {@code PSQLException}: the driver is a <b>runtime</b>
+     * dependency and is not on the compile classpath, so touching its types here would not build.
+     */
+    private static String constraintNameOf(org.springframework.dao.DataIntegrityViolationException ex) {
+        Throwable cause = ex.getMostSpecificCause();
+        String message = cause.getMessage();
+        if (message != null) {
+            java.util.regex.Matcher matcher = CONSTRAINT_NAME.matcher(message);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+        }
+        if (cause instanceof java.sql.SQLException sqlException) {
+            return "sqlstate:" + sqlException.getSQLState();
+        }
+        return cause.getClass().getSimpleName();
+    }
+
+    private static final java.util.regex.Pattern CONSTRAINT_NAME =
+            java.util.regex.Pattern.compile("constraint \"([^\"]+)\"");
+
+    /**
+     * Invalid input that reached a service rather than being caught by bean validation at the
+     * boundary — an inverted date range, a missing property reference, a zero unit count.
+     *
+     * <p>Without this the catch-all below reports a caller's mistake as a 500, which tells the
+     * front desk nothing and pages somebody for a bad request.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ProblemDetail> handleIllegalArgumentException(
+            IllegalArgumentException ex,
+            WebRequest request) {
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
+        );
+        problemDetail.setType(URI.create(BASE_ERROR_URI + "invalid-request"));
+        problemDetail.setTitle("Invalid Request");
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problemDetail);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleGenericException(
             Exception ex,

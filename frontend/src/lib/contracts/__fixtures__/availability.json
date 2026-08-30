@@ -1,0 +1,25 @@
+{
+  "from": "2026-08-30",
+  "to": "2026-08-31",
+  "currency": "INR",
+  "roomTypes": [
+    {
+      "roomTypeId": "d812b0fb-cd5d-4ed7-a4d2-0a12caf6b118",
+      "code": "MIXED-6",
+      "saleMode": "PER_UNIT",
+      "bookableWholeSpaces": 0,
+      "days": [
+        { "date": "2026-08-30", "availableUnits": 4, "totalUnits": 6, "availableSpaces": 0, "totalSpaces": 1, "rateMinor": 65000 }
+      ]
+    },
+    {
+      "roomTypeId": "7d7e6f82-986f-4afd-944b-2b7f3875b53d",
+      "code": "PRIVATE-DOUBLE",
+      "saleMode": "WHOLE",
+      "bookableWholeSpaces": 1,
+      "days": [
+        { "date": "2026-08-30", "availableUnits": 0, "totalUnits": 2, "availableSpaces": 1, "totalSpaces": 1, "rateMinor": 350000 }
+      ]
+    }
+  ]
+}

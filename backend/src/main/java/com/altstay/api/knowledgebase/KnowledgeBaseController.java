@@ -5,6 +5,7 @@ import com.altstay.api.knowledgebase.dto.SaveKnowledgeBaseRequest;
 import jakarta.validation.Valid;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,7 +46,14 @@ public class KnowledgeBaseController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /**
+     * Editing the knowledge base is {@code OWNER}/{@code MANAGER} only — phase-5 §8's role matrix.
+     *
+     * <p>Reads stay open to {@code FRONT_DESK}: the desk needs to look things up to answer a guest.
+     * It is changing the property's published rules that is not a front-desk decision.
+     */
     @PostMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ResponseEntity<KnowledgeBaseVersionResponse> save(
             @PathVariable UUID propertyId,
             @Valid @RequestBody SaveKnowledgeBaseRequest request) {

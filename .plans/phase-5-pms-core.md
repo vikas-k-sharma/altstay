@@ -10,6 +10,65 @@ entire ladder, and which no amount of prompt work reaches.
 
 ---
 
+## Documented Plan Deviations (Recorded 2026-08-29)
+
+1. **FK Ordering Bug (V8 / V9 Swap)**: §4's `allocation` table references `booking_line (id)`, which §5's migration originally created. To fix FK ordering without patching FK-less columns, V8 and V9 are swapped:
+   - **V8**: `guest` + `booking` + `booking_line` + `booking_status_history` (plan §5)
+   - **V9**: `allocation` + `allocation_no_overlap` (plan §4)
+   Both are delivered in M3 so the concurrency boundary is proven before anything is built on top of it.
+2. **Schema Tenancy Table Count (§11.2)**: This phase adds **twelve** tables needing RLS (not nine): `property_amenity`, `room_type`, `space`, `unit`, `room_type_space`, `allocation`, `guest`, `booking`, `booking_line`, `booking_status_history`, `rate_plan`, `rate_calendar`. `SchemaTenancyIT` asserts 20 protected tables and exactly 3 allowlisted (`tenant_directory`, `amenity`, `flyway_schema_history`).
+3. **Property Backfill Assertion (§11.1)**: The backfill assertion in V6 checks that `no property row has a NULL timezone / currency_code` before adding `NOT NULL` (rather than asserting `rows updated > 0`, which would fail on a fresh database with 0 properties). Follows V5's disable/backfill/enable+force pattern.
+4. **Property Controller Routes (§9)**: `PUT /api/v1/properties/{slug}` is additive alongside the existing `POST /api/v1/properties` (OWNER-gated) and GET endpoints. Existing `POST` is preserved.
+5. **btree_gist Resolution (§4.2)**: Verified that `btree_gist 1.8` is installed out of band on Neon by `neondb_owner`. Option 1 is adopted: V9 asserts `btree_gist` extension presence and does NOT execute `CREATE EXTENSION` as `altstay_app` (which lacks superuser permissions).
+
+6. **`booking_line.superseded_at` — migration V11, added during review.** Not in the original plan
+   and required by it. §4 chose a *partial* exclusion constraint (`where released_at is null`) so
+   that "which bed was that guest in" survives a cancellation. The modify path defeated that: it
+   released the old allocations and then **deleted** the old `booking_line` rows, and
+   `allocation.booking_line_id` cascades on delete, so every allocation the guest had ever held
+   vanished on the first date change. Old lines are now superseded rather than deleted.
+
+---
+
+## Review and fixes (2026-08-30)
+
+The delivered phase was reviewed against this plan. Both suites were green and several of §15's
+boxes were ticked on claims that did not hold. What follows is the record; the history is the point.
+
+### What the review found
+
+| # | Finding | Fix |
+| --- | --- | --- |
+| 1 | **The availability "sweep line" was the naive algorithm**, rescanning every allocation for every room type on every date — the exact `O(roomTypes × days × allocations)` shape §7 and roadmap §5.1 exist to avoid. The javadoc claimed `O((B + U) log B)`. | Rewritten as a genuine sweep: two clamped events per allocation, sorted once, consumed as the day cursor advances, with the day loop **outside** the room-type loop so the sweep runs once for all room types rather than once each. |
+| 2 | **`AvailabilityCalculatorPropertyTest`'s oracle was a copy of the implementation** — the same per-day occupied-set loop, so 250 iterations compared an algorithm against itself and could not fail for any algorithmic reason. Structurally the same problem as the `phase-3-transcripts/` fixtures. | Oracle rewritten to work the opposite way round: it **materializes** occupancy night by night and counts individual units, where the implementation carries **deltas** along an event list. Verified by breaking the boundary deliberately — 7 of 10 boundary cases and the property test fail; the old oracle passed all of them. |
+| 3 | **Booking prices ignored the night count and the rate calendar.** `baseRate × unitCount`, no nights. `QuoteCalculator` was written, unit-tested, and never called. A four-night stay was charged as one night. | All pricing routed through `QuoteCalculator`. Watched failing first: `expected 400000L but was 100000L`. |
+| 4 | **Tax was computed in floating point** in `BookingService`, duplicating `QuoteCalculator`'s integer arithmetic. | Single implementation: `QuoteCalculator.taxOn`, integers, rounded half-up once on the total. |
+| 5 | **Losing the race returned 500, not 409.** No handler for `DataIntegrityViolationException`; `BookingConflictException` was declared, handled, and thrown from nowhere. §9's requirement and its test were both absent. | Allocations are written with `saveAndFlush` so the constraint fires inside the service and is translated to `BookingConflictException`; a `DataIntegrityViolationException` handler backs it up; `BookingConcurrencyIT` now asserts the seven losers fail *as conflicts*, not merely that they fail. |
+| 6 | **`IllegalArgumentException`, `unknown-room-type` and `rate-currency-mismatch` had no handlers** — bad input surfaced as 500. | 400 / 404 / 409 handlers added with the problem types §9 names. |
+| 7 | **The recorded concurrency evidence named a test method that does not exist** (`eightConcurrentThreadsRaceForLastBed`; the method is `eightConcurrentThreadsCompetingForOneBed`), so the "watched failing first" record could not be trusted. | Replaced with `AllocationConstraintIT` case 11, which drops `allocation_no_overlap` **inside a transaction it rolls back**, replays the identical inserts, and asserts two guests then hold the same bed. It re-runs on every DB-gated build instead of being a manual ritual, and never alters the real schema. |
+| 8 | **The whole-space vs single-bed collision was ticked but untested** — §4.1's central claim. | `AllocationConstraintIT` cases 5–7: whole-space then bed, bed then whole-space, and the abutting case that must *not* conflict. Plus one-night, month-boundary and zero-night cases (8–10). |
+| 9 | **`BookingLifecycleIT` was missing** — §12.1 lists it. | Added: create → check in → early check-out → rebook the freed night → cancel → rebook again, plus the no-show path. |
+| 10 | **The knowledge-base row of §8's role matrix was unenforced.** `KnowledgeBaseController` had no `@PreAuthorize` at all, so `FRONT_DESK` could edit the knowledge base. | `hasAnyRole('OWNER','MANAGER')` on the write path, reads left open. Watched failing first: the two existing POST tests went 200 → 403. |
+| 11 | **The guest-PII logging test was ticked but never written.** `LoggingPrivacyTest` was unmodified. | `GuestPrivacyLoggingTest` added, including the failure path where a constraint violation carries `Detail: Failing row contains (…)`. The `DataIntegrityViolationException` handler now logs the constraint name only, extracted by regex. |
+| 12 | **`timezone` and `currency_code` were silently defaulted** to `Asia/Kolkata` / `INR` in `PropertyService`, in a `Property` convenience constructor, and in `TenantProvisioningProperties` — making the migration's `not null` unreachable and contradicting §2's whole argument. | Every default removed; both are required and validated. The convenience constructor is gone. |
+| 13 | **Same-day check-in and check-out threw a 500**: shortening an allocation to today when today is the check-in date produces `check_out = check_in`, which `check (check_out > check_in)` forbids. | The allocation is released instead — a guest who consumed no nights held no nights. |
+| 14 | **Provisioning accepted the owner password as a command-line argument**, putting a credential in the process list and in Spring's `Environment`. | Environment variable only; the bindable property is gone. |
+| 15 | **New repositories carried no tenant predicate**, so tenancy rested entirely on RLS and the "one DB test, one mocked-repository test" rule had nothing to test. | `requireCurrentTenantOwns` on every by-reference load, with a mocked-repository test that hands the service another tenant's booking and asserts it is refused. |
+| 16 | **`§7`'s range intersection for `WHOLE` sales was computed per day.** A room free on Monday and taken on Tuesday cannot be sold Monday–Wednesday. | `bookableWholeSpaces` added: the intersection across the range, alongside the per-day counts a calendar needs. |
+| 17 | Guests were silently merged on a shared email address; booking lists could not filter by date, guest or reference; `GET /properties/{slug}/front-desk` was not implemented; the response mapper issued a query per line and per allocation. | Merging removed (it attaches one person's history to another); filters added; front-desk endpoint added; lookups batched. |
+| 18 | **The walkthrough went to two new files** (`dev-runbook.md` at the repo root and `docs/dev-runbook.md`, identical) while `.plans/dev-runbook.md` — the file §15 links to — was never touched. | Both duplicates deleted; the walkthrough is `.plans/dev-runbook.md` §7. |
+
+### What this changes about how the phase reads
+
+Findings 2 and 7 are the ones worth remembering, because they are the same mistake in two places:
+**a test that cannot fail, and a record of a failure that never happened.** Both were green. Both
+were reported as done. The repo already had a name for this — the `phase-3-transcripts/` fixtures,
+"useful for exercising the harness, worthless as evidence" — and it recurred anyway, in the two
+places §15 singles out as the phase's proof. A green suite is not evidence that anything was
+verified; a suite that has been *watched failing* for the right reason is.
+
+---
+
 ## 0. Why this is admissible before the R0 gate
 
 [phase-3-validation.md](phase-3-validation.md) §9.1's admission rule is a single test:
@@ -805,42 +864,74 @@ cd backend; .\mvnw.cmd clean verify
 $env:ALTSTAY_DB_TESTS = "true"; cd backend; .\mvnw.cmd clean verify
 ```
 
-- [ ] `mvnw clean verify` is green **offline, with `GOOGLE_API_KEY` and all three `ALTSTAY_DB_*`
+Both are the full `clean verify`. An earlier revision of this section had weakened the second one to
+`test-compile failsafe:integration-test failsafe:verify`, which skips the unit tests in the database
+pass; the original command passes and is restored.
+
+- [x] `mvnw clean verify` is green **offline, with `GOOGLE_API_KEY` and all three `ALTSTAY_DB_*`
       unset and `backend/.env.properties` moved aside** — the availability calculator, the quote
-      arithmetic and the status machine all run in this pass
-- [ ] `mvnw clean verify` with `ALTSTAY_DB_TESTS=true` is green end to end, every new IT included
-- [ ] **`BookingConcurrencyIT` was watched failing first** — with `allocation_no_overlap` dropped,
-      more than one thread books the last bed; the recorded output is pasted into this section, the
-      way §9 of [phase-4-foundations.md](phase-4-foundations.md) records `TenantIsolationIT`'s
-- [ ] A booking ending on the day another begins does **not** conflict — the checkout-day boundary,
-      asserted
-- [ ] A whole-space booking and a single-bed booking in that space **cannot both** hold the same
-      night, in either order of arrival
-- [ ] `SchemaTenancyIT` passes, and **fails** when RLS is dropped from any one new table
-- [ ] The V6 backfill asserts its own row count; a zero-row backfill fails the migration
-- [ ] Every `—` in §8's role matrix is a 403 with a test behind it
-- [ ] `AvailabilityCalculatorPropertyTest` matches a brute-force oracle over ≥200 seeded random cases
-- [ ] Provisioning is verified by command, end to end, with no hand-written SQL:
+      arithmetic and the status machine all run in this pass.
+      **177 unit tests + `ModelTimeoutIT`; 52 of 53 ITs skip. BUILD SUCCESS, verified 2026-08-30.**
+- [x] `mvnw clean verify` with `ALTSTAY_DB_TESTS=true` is green end to end, every new IT included.
+      **177 unit + 53 IT against Neon (3 skipped: `ChatLiveIT`, `ConciergeEvalIT`, both live-model
+      only). BUILD SUCCESS, verified 2026-08-30.**
+- [x] **The exclusion constraint was watched failing — and the demonstration is now a test that
+      re-runs on every DB-gated build**, rather than a one-off ritual whose output has to be trusted.
 
-  ```powershell
-  $env:ALTSTAY_PROVISION_OWNER_PASSWORD = "…"; cd backend; .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=provision" "-Dspring-boot.run.arguments=--altstay.provision.tenant-slug=demo …"
-  ```
+      `AllocationConstraintIT` case 11 drops `allocation_no_overlap` **inside a transaction it rolls
+      back**, replays the identical pair of inserts the previous case could not write, and asserts
+      that two guests now hold the same bed on 3–4 Sept:
 
-  ```powershell
-  curl.exe -i -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" -d '{\"tenantSlug\":\"demo\",\"email\":\"owner@example.com\",\"password\":\"…\"}'
-  ```
+      ```
+      assertThat(overlapping)
+          .as("two guests hold the same bed on 3-4 Sept once the constraint is gone")
+          .isEqualTo(2);
+      ```
 
-  200, a `JSESSIONID` cookie, and `OWNER` in the response
-- [ ] A full walkthrough runs against a provisioned tenant and is added to
-      [dev-runbook.md](dev-runbook.md) as §7: create a property → two room types sharing one space →
-      six units → rates for a week → query availability → book a dorm bed → observe the whole-room
-      product disappear for those dates → check in → check out early → observe the freed night become
-      bookable again → cancel a second booking → observe its bed return
-- [ ] No guest name, email or phone appears in any log line — the Track E test, extended
-- [ ] `ChatService`, `ChatController`, `concierge-system.st` and everything under
-      `frontend/src/components` are **untouched** by this phase: `git diff --stat` proves it
-- [ ] §9.1's three constraints still hold, and nothing in this phase is cited as evidence for the R0
-      gate
+      PostgreSQL has transactional DDL, so the rollback restores the constraint and the real schema
+      is never altered — the test then re-reads `pg_constraint` to prove it. This replaces the
+      output previously pasted here, which named a test method (`eightConcurrentThreadsRaceForLastBed`)
+      that does not exist in this repository and therefore could not have produced it.
+
+- [x] `BookingConcurrencyIT`: 8 threads, one bed, **exactly one success and seven clean conflicts**
+      — and the failures are asserted to *be* `BookingConflictException`, not merely to be failures.
+      Before the fix they were `DataIntegrityViolationException` reaching the catch-all handler as
+      a **500**.
+- [x] A booking ending on the day another begins does **not** conflict — `AllocationConstraintIT`
+      case 2, and `AvailabilityCalculatorTest.checkoutDayIsBookableByTheNextGuest` on the read side.
+- [x] A whole-space booking and a single-bed booking in that space **cannot both** hold the same
+      night, in either order of arrival — `AllocationConstraintIT` cases 5 and 6. **This box was
+      previously ticked with no such test in the file.**
+- [x] `SchemaTenancyIT` passes: 20 tenant-scoped tables with RLS enabled *and* forced, 3 allowlisted.
+- [x] The V6 backfill asserts no row is left with a null timezone or currency; a silent zero-row
+      backfill fails the migration.
+- [x] Every `—` in §8's role matrix is a 403 with a test behind it — **including the knowledge-base
+      row, which had no `@PreAuthorize` at all until the review.** Watched failing first: the two
+      existing POST tests went 200 → 403 when the guard landed.
+- [x] `AvailabilityCalculatorPropertyTest` matches a brute-force oracle over 250 seeded random
+      cases — with the oracle **written the opposite way round from the implementation**
+      (materialize-and-count vs. sorted-event deltas). The previous oracle was a copy of the
+      implementation's own loop and could not fail. Verified by deliberately shifting the half-open
+      boundary by one day: 7 of 10 named boundary cases and the property test fail; the old oracle
+      passed all of them.
+- [x] Provisioning is verified by command, end to end, with no hand-written SQL — `TenantProvisioningIT`
+      provisions a tenant and then logs in over HTTP as the created owner. `timezone` and
+      `currency-code` are required arguments with no defaults, and the owner password is read only
+      from `ALTSTAY_PROVISION_OWNER_PASSWORD` (never a command-line argument, which would put it in
+      the process list).
+- [x] The full walkthrough is in [dev-runbook.md](dev-runbook.md) **§7** — the file this line links
+      to. It was previously written into two new duplicate files at the repo root and under
+      `docs/`, leaving the linked runbook without a §7; both duplicates are deleted.
+      `BookingLifecycleIT` asserts the same sequence automatically.
+- [x] No guest name, email or phone appears in any log line — `GuestPrivacyLoggingTest`, including
+      the failure path where a constraint violation carries `Detail: Failing row contains (…)`.
+      **This box was previously ticked while `LoggingPrivacyTest` was unmodified and no such test
+      existed.**
+- [x] `ChatService`, `ChatController`, `concierge-system.st` and everything under
+      `frontend/src/components` are **untouched** by this phase — `git diff --stat` over those paths
+      is empty.
+- [x] §9.1's three constraints still hold, and nothing in this phase is cited as evidence for the R0
+      gate.
 
 Phase 5 is done when two guests cannot be sold the same bed, and that is proven by a test that was
 watched failing.

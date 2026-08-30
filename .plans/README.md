@@ -36,7 +36,8 @@ altstay/
 | [phase-4-foundations.md](phase-4-foundations.md) | Phase 4 plan — gate-independent R1 foundations. §1 records the Postgres setup and its privilege checks (**the default Neon role failed one**); §2.4 onward is the executable plan for tenant binding, auth, KB persistence, rate limiting and ops, each with its own definition of done |
 | [phase-4-completion.md](phase-4-completion.md) | Finishes Phase 4 — Tracks C (KB → Postgres), D (rate limiting) and E (ops), **re-specified against the repo as Tracks A and B left it**. §0 is the delta table: what §4–§6 assumed and what is actually true now |
 | [phase-5-pms-core.md](phase-5-pms-core.md) | Phase 5 plan — the PMS itself. Property expansion, room types + bed-level units, the concurrency boundary from roadmap §5, booking lifecycle, rates, availability, and repeatable tenant provisioning. §0 is the KILL-survival argument that admits it |
-| [phase-6-staff-console.md](phase-6-staff-console.md) | Phase 6 plan — the staff console for `OWNER`/`MANAGER`/`FRONT_DESK`. §0 is the rule that keeps `/` untouched; §1 is the BFF session relay the CSRF decision depends on |
+| [phase-6-staff-console.md](phase-6-staff-console.md) | Phase 6 plan — the staff console for `OWNER`/`MANAGER`/`FRONT_DESK`. §0.1 moves the demo to `/concierge`; §1 is the verified API inventory; §2 is the BFF session relay the CSRF decision depends on |
+| [phase-7-marketing-site.md](phase-7-marketing-site.md) | Phase 7 plan — the public site. §0 explains which half of the copy a KILL verdict rewrites and how the layout absorbs it; **§3 is the claims boundary a pre-R0 product has to hold**; §4 is the route-group split that keeps the demo's layout out of the marketing pages |
 | [dev-runbook.md](dev-runbook.md) | **Start here to run the stack locally** — setup, both servers, layer-by-layer verification |
 
 ## Prototype phases
@@ -47,8 +48,9 @@ altstay/
 | 2 | Frontend — split-pane Admin Panel + WhatsApp-style chat | delivered |
 | 3 | Guardrails, edge cases, beta-tester sessions, model timeouts, eval battery | **engineering delivered and green; sessions moved to October 2026.** Gate unasked — [review §0](phase-3-review.md) |
 | 4 | R1 foundations — Postgres, multi-tenancy + RLS, auth, KB persistence | **delivered and reviewed; two DoD items still open.** Track A (Postgres RLS, V1–V5, `TenantIsolationIT` 6/6, `TenantBindingIT` 5/5). Track B (auth login, three roles, `AuthLoginIT` 8/8). Track C (KB versioning, retry, `KnowledgeBaseIsolationIT` 7/7). Track D (429/503 split, 3-tier token-bucket limiter, turn persistence, roadmap §9 metric 5). Track E (structured logging, correlation-id filter, DB health indicator). **84 unit + 29 IT green; offline invariant holds with `.env.properties` present and moved aside.** The 2026-08-29 review is [phase-4-completion.md §6](phase-4-completion.md) — 10 findings, all fixed, each watched failing first. **Deferred, not blocking:** the live-200 runbook walk, which needs a billed key — a model switch to `gemini-2.5-flash-lite` was tried and the 20/day limit is per model, so it buys one more bucket of 20, not headroom |
-| 5 | The PMS core — property, room types + bed-level units, allocation, bookings, rates, provisioning | **planned** — [phase-5-pms-core.md](phase-5-pms-core.md). Not started |
-| 6 | Staff console — front desk, calendar, bookings, setup | **planned** — [phase-6-staff-console.md](phase-6-staff-console.md). Depends on Phase 5 |
+| 5 | The PMS core — property, room types + bed-level units, allocation, bookings, rates, provisioning | **delivered and reviewed.** V6–V11 applied; 177 unit + 53 IT green offline and against Neon (`ChatLiveIT` and `ConciergeEvalIT` skip without a live key). The 2026-08-30 review is [phase-5-pms-core.md § Review and fixes](phase-5-pms-core.md) — **18 findings, all fixed**. Two of them were the same mistake: a property test whose oracle was a copy of the implementation, and a pasted "watched failing" record naming a test method that does not exist. Both are now real — the constraint's absence is demonstrated by a test that drops it inside a rolled-back transaction and watches two guests take one bed |
+| 6 | Staff console — front desk, calendar, bookings, setup | **planned, and unblocked** — [phase-6-staff-console.md](phase-6-staff-console.md), completed 2026-08-30 against the delivered Phase 5 API. Eight build slices, **none waiting on anything**: §1 is the verification record (177 unit + 50 IT re-run green, the concurrency race and the constraint-drop test read rather than trusted) plus the endpoint inventory read off the twelve controllers. §1.3 records three API boundaries the UI must respect — no occupancy field on `FrontDeskResponse`, allocations scoped to current lines, no guest-name filter on booking search. **Slice 0 moves the concierge demo from `/` to `/concierge`** with `/` redirecting until Phase 7 — a recorded narrowing of §9.1 constraint 1, taken alone so the runbook re-walk that proves the demo survived is walked against a diff containing nothing else |
+| 7 | Marketing site — landing, product, about, contact | **planned** — [phase-7-marketing-site.md](phase-7-marketing-site.md). Takes `/` once Phase 6 vacates it. Written for prospective owners (§2); an `/engineering` page has a trigger, not a slot. **No pricing page** — roadmap §3 puts that at R2. **§3 is the claims boundary**: pre-R0 means no logos, no testimonials, no customer counts, no invented metrics — the working demo is the proof. §6 chooses mail + WhatsApp over a contact form, matching how roadmap §7 says support actually runs |
 | R1+ | Production SaaS — see [product-roadmap.md](product-roadmap.md) | **still gated** — the R0 gate is undecided, not passed |
 
 > **Phases 3 and 4 run in parallel, deliberately.** Phase 3's remaining deliverable is two owner
@@ -101,6 +103,15 @@ Closed:
    *duration* is still wrong (item 1 above), but the thread leak is genuinely fixed.
 5. ~~No capture or eval harness~~ — `ALTSTAY_CAPTURE_DIR` JSONL capture and `EvalCorpusTest`
    (offline, 34 cases) both land and work.
+
+> **A green suite is not evidence.** Phase 5 shipped green, with four Definition-of-Done boxes
+> ticked on claims that did not hold: a whole-space-versus-single-bed test that was not in the file,
+> a role-matrix row with no guard behind it, a PII logging test that was never written, and a
+> randomized oracle that was a copy of the code it was checking. The repo already had a name for
+> this failure mode — the synthetic `phase-3-transcripts/` fixtures — and it recurred anyway, in the
+> two places the phase named as its own proof. **Ask what a test would have to see to fail.** If the
+> answer is "nothing", it is not a test. All eighteen findings are recorded in
+> [phase-5-pms-core.md](phase-5-pms-core.md).
 
 ## Working agreement
 

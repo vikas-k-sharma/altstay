@@ -1,0 +1,5 @@
+[
+  { "code": "WIFI", "label": "Free Wi-Fi", "category": "Connectivity" },
+  { "code": "BREAKFAST", "label": "Breakfast included", "category": "Food" },
+  { "code": "AC", "label": "Air conditioning", "category": "Comfort" }
+]

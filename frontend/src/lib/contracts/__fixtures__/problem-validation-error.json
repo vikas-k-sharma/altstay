@@ -1,0 +1,10 @@
+{
+  "type": "https://api.altstay.com/errors/validation-error",
+  "title": "Validation Failure",
+  "status": 400,
+  "detail": "The request payload failed validation",
+  "instance": null,
+  "errors": {
+    "tenantSlug": "tenantSlug is required"
+  }
+}

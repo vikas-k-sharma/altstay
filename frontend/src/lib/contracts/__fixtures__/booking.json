@@ -1,0 +1,71 @@
+{
+  "id": "c7fcafeb-695e-4a53-b221-a8933baea200",
+  "reference": "ALT7F3K9Q",
+  "propertyId": "7ed13bba-74e2-4608-83c6-bedb10b9e5bd",
+  "guestId": "c7f72790-b9d3-405e-abbc-748a7ed7ccf9",
+  "guest": {
+    "id": "c7f72790-b9d3-405e-abbc-748a7ed7ccf9",
+    "fullName": "Arjun Mehta",
+    "email": "arjun@example.com",
+    "phone": null,
+    "countryCode": "IN",
+    "dateOfBirth": null,
+    "notes": null
+  },
+  "status": "CHECKED_IN",
+  "source": "WALK_IN",
+  "checkIn": "2026-08-30",
+  "checkOut": "2026-09-02",
+  "adults": 1,
+  "children": 0,
+  "currencyCode": "INR",
+  "subtotalMinor": 195000,
+  "taxMinor": 23400,
+  "totalMinor": 218400,
+  "amountPaidMinor": 0,
+  "paymentState": "UNPAID",
+  "idempotencyKey": "8f14e45f-ceea-4c9e-8e5c-8f3e2e2b8e2a",
+  "notes": null,
+  "lines": [
+    {
+      "id": "b3a8a278-f0c6-44f8-b382-c7447d6c8f77",
+      "roomTypeId": "d812b0fb-cd5d-4ed7-a4d2-0a12caf6b118",
+      "roomTypeCode": "MIXED-6",
+      "spaceId": null,
+      "checkIn": "2026-08-30",
+      "checkOut": "2026-09-02",
+      "unitCount": 1,
+      "amountMinor": 195000
+    }
+  ],
+  "allocations": [
+    {
+      "id": "add6d8e1-ce89-4689-bfa6-0a323d82abeb",
+      "unitId": "0866e5a9-5438-453b-ae7a-0a2833b79e31",
+      "unitLabel": "Bed 3",
+      "bookingLineId": "b3a8a278-f0c6-44f8-b382-c7447d6c8f77",
+      "checkIn": "2026-08-30",
+      "checkOut": "2026-09-02",
+      "releasedAt": null
+    }
+  ],
+  "statusHistory": [
+    {
+      "id": "8f9cbfb6-2280-4302-a102-44ac2eafbb08",
+      "fromStatus": null,
+      "toStatus": "BOOKED",
+      "changedBy": "7d7e6f82-986f-4afd-944b-2b7f3875b53d",
+      "reason": "Initial booking creation",
+      "changedAt": "2026-08-29T10:00:00Z"
+    },
+    {
+      "id": "9a450948-2937-4075-8732-6c57ed89cfda",
+      "fromStatus": "BOOKED",
+      "toStatus": "CHECKED_IN",
+      "changedBy": "7d7e6f82-986f-4afd-944b-2b7f3875b53d",
+      "reason": null,
+      "changedAt": "2026-08-30T14:05:00Z"
+    }
+  ],
+  "earlyCheckIn": false
+}

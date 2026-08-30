@@ -1,5 +1,5 @@
-import { ConsoleShell } from '@/components/console/ConsoleShell';
+import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  return <ConsoleShell />;
+  redirect('/concierge');
 }

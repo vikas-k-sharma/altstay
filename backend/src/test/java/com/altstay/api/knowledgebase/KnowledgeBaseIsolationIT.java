@@ -179,7 +179,7 @@ class KnowledgeBaseIsolationIT {
             }
 
             // Create a property and knowledge base in DB directly
-            try (PreparedStatement ps = c.prepareStatement("insert into property (id, tenant_id, name, slug) values (?, ?, ?, ?)")) {
+            try (PreparedStatement ps = c.prepareStatement("insert into property (id, tenant_id, name, slug, timezone, currency_code) values (?, ?, ?, ?, 'Asia/Kolkata', 'INR')")) {
                 ps.setObject(1, pId);
                 ps.setObject(2, TENANT_A);
                 ps.setString(3, "Raw Test Property");
@@ -257,7 +257,7 @@ class KnowledgeBaseIsolationIT {
 
             UUID pId = UUID.randomUUID();
             UUID kbId = UUID.randomUUID();
-            try (PreparedStatement ps = c.prepareStatement("insert into property (id, tenant_id, name, slug) values (?, ?, ?, ?)")) {
+            try (PreparedStatement ps = c.prepareStatement("insert into property (id, tenant_id, name, slug, timezone, currency_code) values (?, ?, ?, ?, 'Asia/Kolkata', 'INR')")) {
                 ps.setObject(1, pId);
                 ps.setObject(2, TENANT_A);
                 ps.setString(3, "Raw Uniq Property");
@@ -311,7 +311,7 @@ class KnowledgeBaseIsolationIT {
     void tenantIsolation_cannotReadAcrossTenantBoundaryThroughRepository() {
         authenticateAs(TENANT_A, SLUG_A, USER_A);
         Property pA = TenantContextTestSupport.runAs(TENANT_A, () ->
-                propertyService.createProperty("Property A", "prop-a-" + UUID.randomUUID().toString().substring(0, 8))
+                propertyService.createProperty("Property A", "prop-a-" + UUID.randomUUID().toString().substring(0, 8), "Asia/Kolkata", "INR")
         );
         KnowledgeBaseVersion vA = TenantContextTestSupport.runAs(TENANT_A, () ->
                 knowledgeBaseService.save(pA.getId(), "Tenant A house rules content")
@@ -319,7 +319,7 @@ class KnowledgeBaseIsolationIT {
 
         authenticateAs(TENANT_B, SLUG_B, USER_B);
         Property pB = TenantContextTestSupport.runAs(TENANT_B, () ->
-                propertyService.createProperty("Property B", "prop-b-" + UUID.randomUUID().toString().substring(0, 8))
+                propertyService.createProperty("Property B", "prop-b-" + UUID.randomUUID().toString().substring(0, 8), "Asia/Kolkata", "INR")
         );
 
         // Tenant B attempts to read Tenant A's KB via getCurrent(pA.getId()) -> returns empty
@@ -346,7 +346,7 @@ class KnowledgeBaseIsolationIT {
     void save_endToEnd_createsVersionAndPreservesHistory() {
         authenticateAs(TENANT_A, SLUG_A, USER_A);
         Property prop = TenantContextTestSupport.runAs(TENANT_A, () ->
-                propertyService.createProperty("Sunset Resort", "sunset-" + UUID.randomUUID().toString().substring(0, 8))
+                propertyService.createProperty("Sunset Resort", "sunset-" + UUID.randomUUID().toString().substring(0, 8), "Asia/Kolkata", "INR")
         );
 
         // Save Version 1
@@ -392,7 +392,7 @@ class KnowledgeBaseIsolationIT {
     void save_withUnchangedContent_isNoOp() {
         authenticateAs(TENANT_A, SLUG_A, USER_A);
         Property prop = TenantContextTestSupport.runAs(TENANT_A, () ->
-                propertyService.createProperty("Palm Villa", "palm-" + UUID.randomUUID().toString().substring(0, 8))
+                propertyService.createProperty("Palm Villa", "palm-" + UUID.randomUUID().toString().substring(0, 8), "Asia/Kolkata", "INR")
         );
 
         String content = "Welcome to Palm Villa. WiFi: palm123";
@@ -419,7 +419,7 @@ class KnowledgeBaseIsolationIT {
     void concurrentSaves_retryCleanlyWithoutDuplicateVersionNo() throws ExecutionException, InterruptedException {
         authenticateAs(TENANT_A, SLUG_A, USER_A);
         Property prop = TenantContextTestSupport.runAs(TENANT_A, () ->
-                propertyService.createProperty("Concurrent Lodge", "concur-" + UUID.randomUUID().toString().substring(0, 8))
+                propertyService.createProperty("Concurrent Lodge", "concur-" + UUID.randomUUID().toString().substring(0, 8), "Asia/Kolkata", "INR")
         );
 
         // Pre-create version 1
@@ -461,7 +461,7 @@ class KnowledgeBaseIsolationIT {
     void authoredBy_isWrittenFromPrincipalInDatabase() throws SQLException {
         authenticateAs(TENANT_A, SLUG_A, USER_A);
         Property prop = TenantContextTestSupport.runAs(TENANT_A, () ->
-                propertyService.createProperty("Author Check Lodge", "author-" + UUID.randomUUID().toString().substring(0, 8))
+                propertyService.createProperty("Author Check Lodge", "author-" + UUID.randomUUID().toString().substring(0, 8), "Asia/Kolkata", "INR")
         );
 
         KnowledgeBaseVersion version = TenantContextTestSupport.runAs(TENANT_A, () ->

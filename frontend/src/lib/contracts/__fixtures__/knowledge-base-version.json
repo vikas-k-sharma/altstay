@@ -1,0 +1,11 @@
+{
+  "id": "0866e5a9-5438-453b-ae7a-0a2833b79e31",
+  "tenantId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "knowledgeBaseId": "8f9cbfb6-2280-4302-a102-44ac2eafbb08",
+  "versionNo": 3,
+  "content": "Check-in is 2:00 PM. Check-out is 11:00 AM. No pets allowed.",
+  "contentSha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "charCount": 61,
+  "authoredBy": "7d7e6f82-986f-4afd-944b-2b7f3875b53d",
+  "createdAt": "2026-08-29T10:00:00Z"
+}

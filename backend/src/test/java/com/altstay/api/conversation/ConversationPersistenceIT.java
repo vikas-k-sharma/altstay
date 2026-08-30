@@ -181,7 +181,7 @@ class ConversationPersistenceIT {
     void authenticatedChatCall_persistsConversationAndTokenMargin() throws SQLException {
         authenticateAs(TENANT_A, SLUG_A, USER_A);
         Property property = TenantContextTestSupport.runAs(TENANT_A, () ->
-                propertyService.createProperty("Conv Beach Resort", "conv-" + UUID.randomUUID().toString().substring(0, 8))
+                propertyService.createProperty("Conv Beach Resort", "conv-" + UUID.randomUUID().toString().substring(0, 8), "Asia/Kolkata", "INR")
         );
 
         ChatRequest request = new ChatRequest(

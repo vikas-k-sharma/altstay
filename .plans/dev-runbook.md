@@ -256,7 +256,12 @@ backend log — the BFF's zod schema stops it locally, which is the point.
 
 ## 4. Verify in the browser — the demo that matters
 
-Open <http://localhost:3000>.
+Open <http://localhost:3000/concierge>.
+
+**Phase 6 §0.1 moved the demo from `/` to `/concierge`** so that `/` can become the marketing
+site in Phase 7; `/` now redirects to `/concierge`, so the old muscle-memory instruction — open
+the bare origin — still lands on the demo. Prefer the direct `/concierge` URL here so a redirect
+bug can never be mistaken for a demo bug.
 
 1. **Live sync (the whole pitch).** In the right pane, find the check-in time in the knowledge
    base and change `2:00 PM` to `12:00 PM`. Don't reload. In the left pane ask
@@ -381,3 +386,335 @@ passes with `GOOGLE_API_KEY` unset — the model is never called.
 | Composer greyed out, "Knowledge base exceeds the 20,000 character limit" | The pasted rules are over the cap. Chat is blocked until they are shortened — check a partner's rulebook length *before* the session |
 | `curl: Invoke-WebRequest ... cannot find parameter` | You used `curl`, not `curl.exe` |
 | Backend 400 on a long chat | History over 200 turns — expected |
+
+---
+
+## 7. The PMS core walkthrough
+
+Phase 5's Definition of Done. Everything below runs against a tenant created by the provisioning
+runner — **no hand-written SQL at any point**, which is the whole test: if a step here needs you to
+open a SQL console, the API is missing something a property will need on day one.
+
+The same sequence is asserted automatically by `BookingLifecycleIT` and `AllocationConstraintIT`;
+this section is for watching it happen with your own eyes, which is a different kind of confidence.
+
+### 7.1 Provision a tenant
+
+The owner password comes from the environment and is never a command-line argument — an argument
+would put the credential in the process list and in Spring's own `Environment`.
+
+```powershell
+$env:ALTSTAY_PROVISION_OWNER_PASSWORD = "<choose one>"
+```
+
+```powershell
+cd D:\Vikas\altstay\backend; .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=provision" "-Dspring-boot.run.arguments=--altstay.provision.tenant-slug=driftwood --altstay.provision.tenant-name=Driftwood Beach Hostel --altstay.provision.owner-email=owner@example.com --altstay.provision.property-name=Driftwood Goa --altstay.provision.timezone=Asia/Kolkata --altstay.provision.currency-code=INR"
+```
+
+`timezone` and `currency-code` are **required and have no defaults**. Omit either and the run fails
+at binding rather than inventing one — §2's rule, because a defaulted timezone is a wrong answer
+that looks like a right one.
+
+It prints the tenant id, slug, owner email and property. It never prints the password.
+
+### 7.2 Log in
+
+```powershell
+curl.exe -i -c cookies.txt -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" -d "{\"tenantSlug\":\"driftwood\",\"email\":\"owner@example.com\",\"password\":\"<the one you chose>\"}"
+```
+
+Expect 200, a `JSESSIONID` cookie, and `OWNER` in the body. Use `-b cookies.txt` on everything below.
+
+### 7.3 One physical room, sold two ways
+
+This is roadmap §5's crux and the reason the schema looks the way it does. Create **one** space with
+six beds, then **two** room types over it — and map both to that same space.
+
+```powershell
+curl.exe -b cookies.txt -X POST http://localhost:8080/api/v1/properties/driftwood-goa/spaces -H "Content-Type: application/json" -d "{\"name\":\"Sea View Dorm\",\"floor\":\"1\",\"units\":[{\"label\":\"101-A\",\"unitKind\":\"BUNK_BOTTOM\"},{\"label\":\"101-B\",\"unitKind\":\"BUNK_TOP\"},{\"label\":\"101-C\",\"unitKind\":\"BUNK_BOTTOM\"},{\"label\":\"101-D\",\"unitKind\":\"BUNK_TOP\"},{\"label\":\"101-E\",\"unitKind\":\"BUNK_BOTTOM\"},{\"label\":\"101-F\",\"unitKind\":\"BUNK_TOP\"}]}"
+```
+
+A space with no units is refused: capacity is derived from the bed list and never stored, so a
+space with nothing in it has no capacity and could not be sold anyway (§3.2).
+
+```powershell
+curl.exe -b cookies.txt -X POST http://localhost:8080/api/v1/properties/driftwood-goa/room-types -H "Content-Type: application/json" -d "{\"code\":\"DORM6MIX\",\"name\":\"6-bed mixed dorm\",\"saleMode\":\"PER_UNIT\",\"kind\":\"DORM\",\"maxOccupancy\":6,\"baseRateMinor\":60000}"
+```
+
+```powershell
+curl.exe -b cookies.txt -X POST http://localhost:8080/api/v1/properties/driftwood-goa/room-types -H "Content-Type: application/json" -d "{\"code\":\"PRIV6\",\"name\":\"Whole room, private\",\"saleMode\":\"WHOLE\",\"kind\":\"DORM\",\"maxOccupancy\":6,\"baseRateMinor\":300000}"
+```
+
+Then map **both** room types to the **same** space (`POST /api/v1/room-types/{id}/spaces/{spaceId}`
+for each). Two products, one set of six beds.
+
+### 7.4 Availability before anything is sold
+
+```powershell
+curl.exe -b cookies.txt "http://localhost:8080/api/v1/properties/driftwood-goa/availability?from=2026-10-01&to=2026-10-08"
+```
+
+`DORM6MIX` shows `availableUnits: 6` every night; `PRIV6` shows `availableSpaces: 1` every night and
+`bookableWholeSpaces: 1` for the range. Note the last one is an **intersection over the range**, not
+a per-day count — a room free on Monday and occupied on Tuesday cannot be sold for Monday–Wednesday,
+however good the per-day numbers look.
+
+### 7.5 Sell one dorm bed, and watch the private room vanish
+
+```powershell
+curl.exe -b cookies.txt -X POST http://localhost:8080/api/v1/bookings -H "Content-Type: application/json" -d "{\"propertySlug\":\"driftwood-goa\",\"guest\":{\"fullName\":\"Test Guest\"},\"checkIn\":\"2026-10-01\",\"checkOut\":\"2026-10-05\",\"source\":\"DIRECT\",\"lines\":[{\"roomTypeId\":\"<DORM6MIX id>\",\"unitCount\":1}]}"
+```
+
+Check the totals: four nights at 60000 is `subtotalMinor: 240000`, **not** 60000. Pricing walks the
+nights and consults the rate calendar per night; a booking priced per-booking rather than per-night
+is the single most expensive kind of quiet bug in this system.
+
+Re-run 7.4. `DORM6MIX` drops to 5 beds on 1–4 Oct, and `PRIV6` drops to **0 spaces** on those
+nights, because one occupied bed means the room can no longer be sold whole. That coupling is one
+GiST index, not application logic that has to remember both directions.
+
+### 7.6 Check in, then check out early
+
+```powershell
+curl.exe -b cookies.txt -X POST http://localhost:8080/api/v1/bookings/<ALT-XXXXXX>/transitions -H "Content-Type: application/json" -d "{\"to\":\"CHECKED_IN\"}"
+```
+
+```powershell
+curl.exe -b cookies.txt -X POST http://localhost:8080/api/v1/bookings/<ALT-XXXXXX>/transitions -H "Content-Type: application/json" -d "{\"to\":\"CHECKED_OUT\",\"reason\":\"left early\"}"
+```
+
+The allocations are shortened to end **today** in the same transaction, so tonight becomes sellable
+immediately. §5.1 calls this the most commonly missed behaviour in a hostel PMS, and it is the
+difference between a bed earning money tonight and sitting empty because the system still thinks
+someone is in it.
+
+A guest leaving on the day they arrived is handled too: there is no shorter range than zero nights,
+and `check_out > check_in` forbids one, so the allocation is **released** instead of collapsed.
+
+### 7.7 Cancel, and watch the bed come back
+
+```powershell
+curl.exe -b cookies.txt -X POST http://localhost:8080/api/v1/bookings/<ALT-YYYYYY>/transitions -H "Content-Type: application/json" -d "{\"to\":\"CANCELLED\",\"reason\":\"changed plans\"}"
+```
+
+The allocation rows get `released_at` and **stay**. Which bed that guest was in survives the
+cancellation — a PMS is a system of record, and the partial exclusion constraint
+(`where released_at is null`) is what lets both things be true at once.
+
+### 7.8 The front desk's morning
+
+```powershell
+curl.exe -b cookies.txt "http://localhost:8080/api/v1/properties/driftwood-goa/front-desk"
+```
+
+Arrivals, departures and in-house for **today in the property's timezone**. Omit `?date=` and it
+uses the property's own day boundary, never the server's.
+
+### 7.9 Two guests, one bed
+
+The thing the whole phase exists to prevent. Don't try to reproduce it by hand — races are not
+reproducible by hand, which is the point. It is asserted by:
+
+```powershell
+$env:ALTSTAY_DB_TESTS = "true"; cd D:\Vikas\altstay\backend; .\mvnw.cmd failsafe:integration-test failsafe:verify "-Dit.test=BookingConcurrencyIT+AllocationConstraintIT"
+```
+
+`BookingConcurrencyIT` runs eight threads at one remaining bed and asserts exactly one 201 and seven
+clean conflicts. `AllocationConstraintIT` case 11 then removes `allocation_no_overlap` **inside a
+transaction it rolls back**, replays the identical inserts, and asserts that two guests now hold the
+same bed — the incident the constraint prevents, observed rather than asserted. The schema is never
+actually altered.
+
+## 8. The staff console walkthrough
+
+Phase 6's Definition of Done. Same story as §7 — one physical room sold two ways, the coupling
+between them, a booking's full lifecycle — but through the console in a browser, by a person who
+has never seen the schema. **No hand-written SQL and no `curl.exe` at any step.** If a step here
+needs either, the console is missing something a front desk would need on day one.
+
+Unlike §7, this doesn't hardcode October 2026 dates: run it whenever, and read "today" as *the
+property's* today (Asia/Kolkata below), which is what every screen in the console itself uses —
+never the browser's or the server's (phase-6-staff-console.md §7.2, and the reason `propertyToday`
+exists at all).
+
+Needs the frontend terminal from §2, and a provisioning run in place of §1's plain backend. §8.1's
+`ApplicationRunner` prints the banner and returns, but the Spring Boot process it ran inside does
+**not** exit — it keeps serving on :8080 exactly like §1's backend, so that terminal *is* your
+backend for the rest of this walkthrough. Don't also start §1's plain backend: both bind :8080 and
+the second one to start will fail. When you're done, stop it the same way you'd stop §1 (Ctrl+C).
+
+### 8.1 Provision a tenant
+
+A fresh tenant, distinct from §7's `driftwood` so the two walkthroughs never collide on the unique
+tenant slug if both have been run against the same database.
+
+```powershell
+$env:ALTSTAY_PROVISION_OWNER_PASSWORD = "<choose one>"
+```
+
+```powershell
+cd D:\Vikas\altstay\backend; .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=provision" "-Dspring-boot.run.arguments=--altstay.provision.tenant-slug=riverbend --altstay.provision.tenant-name=Riverbend Rishikesh --altstay.provision.owner-email=owner@riverbend.example --altstay.provision.property-name=Riverbend Rishikesh --altstay.provision.timezone=Asia/Kolkata --altstay.provision.currency-code=INR"
+```
+
+It prints the tenant id, slug, owner email and property — never the password. `riverbend` and
+`owner@riverbend.example` are the workspace and email you log in with next.
+
+### 8.2 Log in
+
+Open <http://localhost:3000> (or `/console` directly). The redirect from `/` lands on `/concierge`
+(phase-6-staff-console.md §0.1) — that's the demo, not this. Navigate to
+<http://localhost:3000/console/login> instead.
+
+Fill in:
+
+| Field | Value |
+| --- | --- |
+| Workspace | `riverbend` |
+| Email | `owner@riverbend.example` |
+| Password | *the one you chose in §8.1* |
+
+Submit. You land on `/console` — Today — showing **"No bookings yet"** with a link to inventory
+setup, not an empty arrivals list. That distinction (phase-6-staff-console.md §4.2, §10) is the
+point: a brand-new tenant and a quiet Tuesday must not look identical.
+
+### 8.3 One physical room, sold two ways
+
+Click **Inventory** in the left nav (`/console/settings/inventory`).
+
+**Room types** — under "Add room type", create two, one at a time:
+
+| Field | First room type | Second room type |
+| --- | --- | --- |
+| Code | `DORM6MIX` | `PRIV6` |
+| Name | `6-bed mixed dorm` | `Whole room, private` |
+| Sale mode | Per unit (dorm beds) | Whole (private room) |
+| Kind | Dorm | Dorm |
+| Max occupancy | `6` | `6` |
+| Base rate | `600` | `3000` |
+| Active | checked | checked |
+
+Both **Kind: Dorm** is deliberate, not a copy-paste mistake — a whole-dorm buyout (`WHOLE` +
+`DORM`) is the example the settings screen itself uses to explain that sale mode is how capacity
+is consumed and kind is what the guest thinks they're buying (§4.8).
+
+**Spaces and units** — under "Add space": Name `101`, Floor `1`, then click **+ Add bed** five
+times for six rows total and label them `101-A` through `101-F`, alternating Kind between
+`BUNK_BOTTOM` and `BUNK_TOP`. Submit. The space list shows **"101 · floor 1 · 6 bed(s)"** — capacity
+is derived from the beds you just added, never entered directly (it isn't editable anywhere in
+this screen — phase-5 §3.2).
+
+**Mapping** — find the `101` row. It starts as *"— nothing. This room cannot be sold"* (§4.8's
+zero-mapping warning). Use **+ add** to map it to `6-bed mixed dorm`, then again to `Whole room,
+private`. The row now reads **Sold as: [6-bed mixed dorm ×] [Whole room, private ×]** — one
+physical room, two products.
+
+### 8.4 Set a rate for a week
+
+Click **Rates** in the nav. No rate plan exists yet, so only "Create a rate plan" shows. Create
+one: Room type `DORM6MIX`, Code `STANDARD`, Name `Standard rate`, Default checked.
+
+The screen now also shows a month grid for that plan, every day muted at **₹600.00** — the room
+type's base rate, because no override exists yet (§4.9). Using "Set rate for a range": From
+*today*, To *today + 6 days* — **inclusive of the end date**, unlike every booking range in this
+console, which is half-open (§12.1's own note on this). Rate `650`. Submit. The same week now
+shows **₹650.00**, no longer muted.
+
+### 8.5 Open the calendar and see both products available
+
+Click **Calendar**. Set From to *today*, leave Days at 14, click Update.
+
+- `6-bed mixed dorm` shows **6 / 6** available every night, ₹650.00 for the week you just priced.
+- `Whole room, private` shows **1 / 1** available spaces per night, and **1 bookable whole** in
+  its row header — the range-wide count the wizard's `WHOLE` path actually uses, not the per-day
+  number this grid renders (§4.3).
+
+Read the legend beneath the grid — it's explaining exactly the coupling you're about to watch
+happen in §8.7.
+
+### 8.6 Book a dorm bed
+
+Click today's cell in the `6-bed mixed dorm` row. It opens the wizard pre-filled with that room
+type and date.
+
+1. **Dates** — Check-in is already today; set Check-out to *today + 3* (a 3-night stay). Adults
+   `1`, Children `0`. **Next: room.**
+2. **Room** — `6-bed mixed dorm` is pre-selected, showing "6 available". Beds `1`. **Next: guest.**
+3. **Guest** — switch to **New guest**: Full name `Priya Test Guest`, Email `priya@example.com`.
+   **Next: review.**
+4. **Review** — the quote loads with a per-night breakdown (₹650.00 × 3, since the whole stay
+   falls inside the week you priced) and a total, computed by the backend, never summed in the
+   browser (§4.6). **Confirm booking.**
+
+You land on "Booking created." with a link to the new reference — click it. The booking detail
+page shows **BOOKED**, and the only actions offered are **Checked in**, **Cancelled** and
+**No-show** — never **Checked out**, because it isn't legal from `BOOKED` and the screen doesn't
+offer illegal moves with a tooltip explaining why not (phase-6-staff-console.md §4.5, §7.3).
+
+### 8.7 Watch the whole-room product disappear for those dates on the same calendar
+
+Back to **Calendar**, same week. For the three nights you just booked:
+
+- `6-bed mixed dorm` now shows **5 / 6**.
+- `Whole room, private` now shows **0 / 1**, and **0 bookable whole** in its row header.
+
+One dorm bed sold made the *entire private room* unsellable for those nights, in the same render,
+from the same call — this is roadmap §5's crux and the reason the schema looks the way it does.
+Nights outside the stay are untouched: `6-bed mixed dorm` is still 6/6 and `Whole room, private`
+still 1/1 the day after checkout.
+
+### 8.8 Check the guest in
+
+Click **Today**. Because check-in is today, the booking appears under **Arrivals** with a
+**Check in** button. Click it.
+
+- If you're doing this at a moment that counts as "on time" (you are, since check-in is today),
+  the list refreshes and the booking moves into **In house** with no extra note.
+- `earlyCheckIn` only ever shows up if the booked check-in date is still in the future relative to
+  the property's today — not reachable in this walkthrough, since the wizard itself refuses a
+  check-in date before today (phase-6-staff-console.md §4.6's own validation). If you want to see
+  the "early check-in noted, not blocked" behaviour it's there to surface (phase-6-staff-console.md
+  §4.2), you'd need a booking made for a future date and checked in today — worth trying once
+  you're comfortable with the rest of this flow.
+
+### 8.9 Check out a night early, and see the freed night become bookable again
+
+Open the booking (from **Bookings**, or the reference link on Today). It's now **CHECKED_IN**, and
+the only actions offered are **Checked out** and **Cancelled** — `No-show` is gone, because it
+isn't legal from here either.
+
+Click **Checked out**. Leave the reason blank (it's optional) and **Confirm**.
+
+Because you're checking out on the same calendar day as check-in, the backend releases tonight's
+allocation outright rather than shortening a later date (`BookingService.transitionBooking`'s two
+branches collapse into one when checkout happens same-day as check-in) — but the **observable
+result is identical to a true mid-stay early checkout**: go back to **Calendar** and the nights
+you didn't end up using are bookable again. `6-bed mixed dorm` and `Whole room, private` are back
+to 6/6 and 1/1 for the remaining nights of what would have been a 3-night stay.
+
+The more surgical case — checking out on a *later* calendar day than check-in, which only
+*shortens* the stay instead of releasing it whole — needs the walkthrough to span real calendar
+days, which a single sitting can't do. §7.6 demonstrates that exact branch directly against the
+API with dates it controls; `BookingLifecycleIT` asserts it automatically either way.
+
+### 8.10 Cancel a second booking, and see its bed return
+
+Book a second stay the same way as §8.6 — same room type, a date range a few days later so it
+doesn't overlap the first (e.g. *today + 5* through *today + 7*) — through to a confirmed booking.
+
+Check **Calendar** for those dates: `6-bed mixed dorm` at 5/6, `Whole room, private` at 0/1, same
+coupling as before.
+
+Open the new booking's detail page. It's **BOOKED**, so the actions are **Checked in**,
+**Cancelled**, **No-show**. Click **Cancelled**, give a reason (`"changed plans"` is fine), confirm.
+
+The status history now shows the cancellation, and **Calendar** for those dates shows both room
+types back to full availability — the allocation's `released_at` is set, but the row itself
+**stays**, which is why the booking detail's "Beds on this booking" section can still show which
+bed this guest held, struck through, rather than showing nothing at all (§4.5). A PMS is a system
+of record: cancelling a booking must free the bed without erasing that it ever happened.
+
+### 8.11 What this walkthrough doesn't cover
+
+Two things §13's checklist calls out as still needing a real browser and a Gemini key with quota,
+not a tenant: the `/concierge` demo re-walk (§4), and confirming the console itself **looks and
+feels** right at 1280×800 and tablet width. Nothing in §8.1–§8.10 substitutes for either.
