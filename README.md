@@ -2,11 +2,12 @@
 
 A Property Management System for **alternative, hybrid-inventory stays** — hostels, surf camps,
 retreat centres — entered through a lean wedge: an AI concierge that answers guest questions from
-a knowledge base the property owner can edit live.
+a knowledge base the property owner edits live.
 
-> **Status: Phase 3 engineering delivered; validation evidence not.** Runs locally, single
-> property, no database, no auth. Both suites are green; the two beta sessions have not happened,
-> so the R0 gate is **undecided** — see [`.plans/phase-3-review.md`](.plans/phase-3-review.md) §0.
+> **Status:** PMS core delivered. Multi-tenant PostgreSQL with row-level security, tenant-scoped
+> authentication, and the inventory/rates/bookings model are built and tested. The guest-facing
+> concierge runs single-property and unauthenticated by design while the product question it
+> exists to answer is still open — see [Roadmap](#roadmap).
 
 ## Why this exists
 
@@ -17,9 +18,36 @@ which also sells a 7-day yoga retreat and rents scooters. Owners run the gaps in
 Second gap: in India and South-East Asia guests talk to properties on **WhatsApp**, before and
 during their stay. No PMS lives there, so the owner is the integration — personally, at 2 AM.
 
-The concierge is the wedge into that second gap. The inventory model is the actual product.
-Full reasoning, release gates and what we deliberately won't build:
-[`.plans/product-roadmap.md`](.plans/product-roadmap.md).
+The concierge is the wedge into that second gap. **The inventory model is the actual product.**
+
+## What's built
+
+**Tenancy and access**
+
+- Multi-tenant PostgreSQL. Isolation is enforced by **row-level security in the database**, not by
+  application `WHERE` clauses alone.
+- The tenant is bound to the connection *inside* the transaction
+  (`set_config('app.tenant_id', …, true)`) and is only ever derived from an authenticated
+  principal — never from a client-supplied value.
+- Tenant-scoped login (property slug + email + password) on an httpOnly, `SameSite=Strict` session
+  cookie. Roles: `OWNER`, `MANAGER`, `FRONT_DESK`.
+- Token-bucket rate limiting, per tenant and per anonymous caller.
+
+**Inventory, rates and bookings**
+
+- Room types, physical spaces, and the dorm-bed / private-room duality that makes hostels awkward.
+- Night-by-night availability from sorted event deltas, verified against an independent
+  brute-force oracle in a property-based test.
+- Rate plans with a date calendar, quote calculation, bookings with a status machine, and
+  allocation guarded by a PostgreSQL exclusion constraint so two guests cannot hold one bed.
+
+**Concierge**
+
+- Stateless `POST /api/v1/chat`. Every request carries its own knowledge base and history, which is
+  why editing a rule lands on the next message with no restart and no cache invalidation.
+- Refuses to answer outside its knowledge base, and escalates to a human instead of inventing.
+
+**Schema** — 11 Flyway migrations (`V1`–`V11`), applied at startup.
 
 ## Architecture
 
@@ -28,24 +56,56 @@ through a Next.js Route Handler acting as a backend-for-frontend.
 
 ```
 Browser  ──POST /api/chat──▶  Next.js BFF  ──POST /api/v1/chat──▶  Spring Boot  ──▶  Gemini
-         ◀──── JSON ────────  (zod in/out)  ◀──── JSON ──────────   (stateless)
+         ◀──── JSON ────────  (zod in/out)  ◀──── JSON ──────────      │
+                                                                  PostgreSQL
+                                                                  (RLS per tenant)
 ```
 
 The BFF exists so the API URL and credentials stay server-side, so CORS never enters the picture,
 and so auth, rate limiting, and session capture have one clean boundary.
 
-**The API is stateless.** Every request carries its own knowledge base and full conversation
-history. That's what makes "edit a rule on the right, see it reflected in the next message on the
-left" work with no restart and no cache invalidation — which is the entire demo.
-
 ```
 altstay/
-├─ .plans/      Phase plans, reviews, beta transcripts, roadmap, runbook
-├─ backend/     Spring Boot 4.1.1 · Java 25 · Spring AI 2.0.1 · Gemini
+├─ backend/     Spring Boot 4.1.1 · Java 25 · Spring AI 2.0.1 · PostgreSQL · Flyway
 └─ frontend/    Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4
 ```
 
-Each app has its own README with detail: [backend](backend/README.md) · [frontend](frontend/README.md).
+Each app has its own README: [backend](backend/README.md) · [frontend](frontend/README.md).
+
+## Engineering notes
+
+The decisions here that were not obvious, and what they cost to find:
+
+- **The database's default role bypassed every RLS policy.** The managed provider's default owner
+  role has `rolbypassrls = true`, so an app connecting as it would have had a tenancy model that
+  enforced nothing — while the isolation tests still passed. The app connects as a purpose-made
+  `altstay_app` role created with plain SQL, because roles created through the provider's console
+  inherit a superuser group. The tenancy tests were watched failing with RLS disabled before being
+  trusted.
+
+- **Connection pooling and tenancy interact badly.** Binding a tenant with `SET LOCAL` ties it to a
+  connection; a transaction-mode pooler multiplexes sessions across backends, which is a route for
+  one tenant's binding to land in another tenant's query. The app uses the direct host.
+
+- **A JPA `save()` does not reach the database until flush**, so a constraint-backed booking race
+  surfaced at *commit* — outside the service, as a 500 with a Postgres constraint name in the body.
+  Allocations are written with `saveAndFlush` so the violation happens where it can be translated
+  into a 409 a human can act on.
+
+- **The model SDK installs its own retry interceptor unconditionally**, defaulting to five attempts
+  with exponential backoff — silently multiplying a 2s read timeout into 13–21s of real latency.
+  It is now pinned to a single attempt at the HTTP client layer. Logging the *configured* timeout
+  rather than the *elapsed* one hid this for an entire phase.
+
+- **The test `application.yaml` replaces the main one rather than merging with it**, so any setting
+  that lives only in the main file is covered by no test. That shipped a missing `SameSite` cookie
+  attribute which read as configured. Config that must hold in production *and* be testable now
+  lives in a bean.
+
+- **A randomized test is worth exactly as much as the independence of its oracle.** An early
+  availability property test compared the implementation against a copy of its own loop: 250
+  iterations incapable of failing. The oracle now materializes occupancy night by night where the
+  implementation carries sorted event deltas.
 
 ## Quick start
 
@@ -61,9 +121,9 @@ cd frontend; npm install; npm run dev
 
 Open <http://localhost:3000>.
 
-First run on a fresh machine needs environment setup (`JAVA_HOME`, PATH) — and the verification
-steps are worth doing in order, because they tell you *which layer* broke:
-**[`.plans/dev-runbook.md`](.plans/dev-runbook.md)**.
+`GOOGLE_API_KEY` has no default and the app fails fast without it. The database credentials
+(`ALTSTAY_DB_URL`, `ALTSTAY_DB_USER`, `ALTSTAY_DB_PASSWORD`) are the same, and the URL must carry
+`sslmode=require`.
 
 ## The demo
 
@@ -72,7 +132,7 @@ steps are worth doing in order, because they tell you *which layer* broke:
 3. Ask something absent from the rules → it escalates to a human instead of inventing an answer.
 
 Step 3 is the one that matters commercially. A concierge that confidently invents a pet policy is
-worse than no concierge, and it's the objection that blocks the sale.
+worse than no concierge, and it is the objection that blocks the sale.
 
 ## Tests
 
@@ -84,49 +144,48 @@ cd backend; .\mvnw.cmd clean verify
 cd frontend; npm run test; npm run build; npm run lint
 ```
 
-Both suites run offline with no API key. The live Gemini eval battery is opt-in:
+**The suite runs offline.** With no API key and no database configured, the unit tests and the
+offline integration tests run and the database-backed ones skip — the test configuration excludes
+the DataSource, Hibernate and Flyway autoconfigurations to keep it that way.
+
+Database integration tests are opt-in, against real PostgreSQL 13+:
 
 ```powershell
-$env:ALTSTAY_LIVE_TESTS="true"; .\mvnw.cmd verify
+$env:ALTSTAY_DB_TESTS="true"; .\mvnw.cmd verify
 ```
+
+They cannot run on H2 — RLS does not exist there, so an H2 suite would prove tenancy works in a
+database this project does not ship.
+
+The live model eval battery is opt-in separately via `ALTSTAY_LIVE_TESTS=true`.
 
 ## Roadmap
 
 | Phase | Scope | Status |
 | --- | --- | --- |
-| 1 | Backend — stateless `POST /api/v1/chat` | delivered |
-| 2 | Frontend — split-pane console | delivered |
-| 3 | Guardrail tuning, edge cases, model timeouts, eval battery, beta sessions | engineering delivered; **beta sessions not yet run** |
-| R1+ | Multi-tenancy, WhatsApp Cloud API, server-side sessions, inventory, bookings | **gated** on real Phase 3 evidence |
+| 1 | Stateless `POST /api/v1/chat` | delivered |
+| 2 | Split-pane console | delivered |
+| 3 | Guardrail tuning, model timeouts, eval battery | delivered |
+| 4 | PostgreSQL, multi-tenancy + RLS, authentication, rate limiting | delivered |
+| 5 | PMS core — inventory, availability, rates, bookings, allocation | delivered |
+| 6 | Staff console over the PMS API | in progress |
+| — | WhatsApp Cloud API, human handoff, guest threads | gated |
 
-Phase 3's gate is not a test suite. It is two hostel owners trying to break the AI, and **capturing
-every question they ask verbatim** — that transcript is the prompt-tuning input, the regression
-suite, and the evidence for whether R1 is worth starting. The capture machinery is built and
-working; the sessions have not happened, and the files currently in `.plans/phase-3-transcripts/`
-are synthetic fixtures.
+The gated items wait on one question no test suite can answer: whether hostel owners, shown the
+concierge unprompted, ask when they can have it. Until that happens the concierge stays
+deliberately narrow, and the inventory model is where the effort goes.
 
-## Known limitations (for R1)
+## Known limitations
 
-Deliberate for a prototype, blocking for production deployment:
+Deliberate, and tracked:
 
-- **No auth or rate limiting.** Both endpoints are open and cost money per call.
+- **`POST /api/v1/chat` and `/actuator/health` are intentionally unauthenticated.** Everything else
+  under `/api/v1/**` requires a session. A standing test asserts the chat endpoint stays open, so
+  closing it has to be a deliberate act rather than an accident.
 - **Conversation history is client-supplied and trusted**, so a caller can fabricate assistant
-  turns (`injection-history`). Server-side session store in R1 will address this.
-- Single property, no database, knowledge base lives in the browser's `localStorage`.
-- **`GOOGLE_API_KEY` must be set as an environment variable.** There is no default in any tracked
-  file, so the app fails at startup without it.
-- **Model calls time out at 20s** (5s connect), inside the BFF's 25s budget, surfacing as a 502.
-
-Tracked in [`.plans/phase-1-review.md`](.plans/phase-1-review.md), [`.plans/phase-2-review.md`](.plans/phase-2-review.md), and [`.plans/phase-3-review.md`](.plans/phase-3-review.md).
-
-## Documentation
-
-| Document | Contents |
-| --- | --- |
-| [`.plans/README.md`](.plans/README.md) | Index of all planning docs |
-| [`.plans/product-roadmap.md`](.plans/product-roadmap.md) | Thesis, value ladder, R0–R4 gates, irreversible architecture decisions |
-| [`.plans/dev-runbook.md`](.plans/dev-runbook.md) | Local setup and layer-by-layer verification |
-| [`.plans/phase-1-backend-ai.md`](.plans/phase-1-backend-ai.md) | Backend plan — **§4 is the canonical API contract** |
-| [`.plans/phase-2-frontend.md`](.plans/phase-2-frontend.md) | Frontend plan |
-| [`.plans/phase-3-validation.md`](.plans/phase-3-validation.md) | Phase 3 validation specification |
-| [`.plans/phase-3-review.md`](.plans/phase-3-review.md) | **Phase 3 review & R0 release gate signoff** |
+  turns. A server-side session store is the fix, and is not built yet.
+- The concierge is **single-property**, and its knowledge base lives in the browser's
+  `localStorage` rather than in the multi-tenant schema beside everything else.
+- CSRF is disabled on `/api/v1/**` only, resting on the invariant that the browser reaches Spring
+  exclusively through the BFF, server-to-server. If a browser ever gains a direct route, that
+  decision is void.
