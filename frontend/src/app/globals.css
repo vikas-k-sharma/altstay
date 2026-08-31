@@ -13,6 +13,15 @@
   --danger: #dc2626;
   --warning: #d97706;
   --success: #16a34a;
+
+  /* phase-7 §7.1 — additive marketing tokens; no value above this line changes. Design decision
+     (phase-7-marketing-site.md): the .design reference uses a warm cream/terracotta palette, but
+     §7.1 asks for one palette shared with the console, so marketing reuses --accent etc. above
+     rather than adopting the reference's colours — only its layout rhythm and type scale. */
+  --accent-quiet: #ecfdf5;
+  --font-size-display: 3.5rem;
+  --font-size-display-sm: 2.25rem;
+  --tracking-display: -0.02em;
 }
 
 @theme inline {
@@ -29,6 +38,7 @@
   --color-danger: var(--danger);
   --color-warning: var(--warning);
   --color-success: var(--success);
+  --color-accent-quiet: var(--accent-quiet);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -44,6 +54,8 @@
     --danger: #f87171;
     --warning: #fbbf24;
     --success: #4ade80;
+
+    --accent-quiet: #052e1f;
   }
 }
 

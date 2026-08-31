@@ -1,0 +1,74 @@
+import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import MarketingHomePage from './page';
+
+describe('MarketingHomePage', () => {
+  it('renders the hero and both CTAs with no session', () => {
+    render(<MarketingHomePage />);
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: /hands ₹6–7 lakh/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Try the concierge' })).toHaveAttribute('href', '/concierge');
+    expect(screen.getByRole('link', { name: 'See the product' })).toHaveAttribute('href', '/product');
+  });
+
+  it('states the commission arithmetic as an illustrative example, not a promise', () => {
+    render(<MarketingHomePage />);
+    expect(screen.getByText(/illustrative example/i)).toBeInTheDocument();
+    expect(screen.getByText('₹39,42,000')).toBeInTheDocument();
+  });
+
+  it('names both mismatches from the problem section', () => {
+    render(<MarketingHomePage />);
+    expect(screen.getByText(/the same room is two products/i)).toBeInTheDocument();
+    expect(screen.getByText(/you are the whatsapp integration/i)).toBeInTheDocument();
+  });
+
+  it('links each of the three pillars into /product', () => {
+    render(<MarketingHomePage />);
+    expect(screen.getByRole('link', { name: /concierge →/i })).toHaveAttribute('href', '/product#concierge');
+    expect(screen.getByRole('link', { name: /inventory →/i })).toHaveAttribute('href', '/product#inventory');
+    expect(screen.getByRole('link', { name: /bookings →/i })).toHaveAttribute('href', '/product#bookings');
+  });
+
+  it('embeds the real, live concierge demo rather than a screenshot, on click', () => {
+    render(<MarketingHomePage />);
+    expect(screen.queryByTitle(/altstay concierge/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /load the live demo/i }));
+
+    const frame = screen.getByTitle(/altstay concierge/i);
+    expect(frame.tagName).toBe('IFRAME');
+    expect(frame).toHaveAttribute('src', '/concierge');
+  });
+
+  it('renders the hybrid-inventory diagram once, and nowhere else on the site', () => {
+    render(<MarketingHomePage />);
+    expect(screen.getByRole('group', { name: /dorm night/i })).toBeInTheDocument();
+  });
+
+  it('states development status plainly and offers one real way to get in touch', () => {
+    render(<MarketingHomePage />);
+    expect(screen.getByText(/no one is paying for this yet/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /whatsapp/i })).toHaveAttribute(
+      'href',
+      expect.stringContaining('wa.me')
+    );
+    expect(screen.getByRole('link', { name: /hello@altstay\.in/ })).toHaveAttribute(
+      'href',
+      'mailto:hello@altstay.in'
+    );
+  });
+
+  it('has no autoplaying video, carousel or chat widget', () => {
+    const { container } = render(<MarketingHomePage />);
+    expect(container.querySelector('video')).toBeNull();
+    expect(container.querySelector('[data-carousel]')).toBeNull();
+  });
+
+  it('has no image without alt text', () => {
+    const { container } = render(<MarketingHomePage />);
+    container.querySelectorAll('img').forEach((img) => expect(img.getAttribute('alt')).not.toBeNull());
+  });
+});

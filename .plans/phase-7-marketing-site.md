@@ -339,6 +339,23 @@ cd frontend; npx serve@latest out 2>$null; # or: npm run start — then run Ligh
 
 ---
 
+## 13. Build log — decisions made while building
+
+- **Slice 1 (2026-08-31).** Took §4.1's escape hatch: `src/app/layout.tsx` is untouched;
+  `(marketing)/layout.tsx` sets its own background/text/font on a wrapping `<div>` instead. Makes
+  "the demo is unaffected" true by construction rather than something to re-verify — no `git diff`
+  under `concierge/`, and the root-layout move stays available for after the October sessions.
+- **Palette diverged from `.design/altstay-marketing-site.html` on purpose.** The reference uses a
+  warm cream/terracotta system (`#FCFAF6` / `#A83E22`); §7.1 asks for one palette shared with the
+  console, so marketing reuses the existing `--accent`/`--surface`/`--border` tokens from
+  phase-6 §8.1 rather than introducing a second system. Only the reference's layout rhythm, type
+  scale (Geist, ~60px/600-weight display heading, 19px lead paragraph, mono uppercase eyebrows)
+  and copy were carried over — additive tokens (`--accent-quiet`, `--font-size-display*`,
+  `--tracking-display`) cover what didn't already exist.
+- **The WhatsApp number in `src/lib/marketing/contact.ts` is a placeholder** (`+91 98xxx xxxxx`,
+  masked the same way the design reference masks it). Needs the founder's real number before
+  `/contact`'s WhatsApp link or the footer go live — one file to edit when it's known.
+
 ## 12. Not in this phase
 
 - **A pricing page** — roadmap §3 puts the decision at R2. Trigger: the pricing model is decided.
