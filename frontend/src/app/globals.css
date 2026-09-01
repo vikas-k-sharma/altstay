@@ -19,6 +19,7 @@
      §7.1 asks for one palette shared with the console, so marketing reuses --accent etc. above
      rather than adopting the reference's colours — only its layout rhythm and type scale. */
   --accent-quiet: #ecfdf5;
+  --accent-foreground: #ffffff;
   --font-size-display: 3.5rem;
   --font-size-display-sm: 2.25rem;
   --tracking-display: -0.02em;
@@ -39,6 +40,7 @@
   --color-warning: var(--warning);
   --color-success: var(--success);
   --color-accent-quiet: var(--accent-quiet);
+  --color-accent-foreground: var(--accent-foreground);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -56,6 +58,9 @@
     --success: #4ade80;
 
     --accent-quiet: #052e1f;
+    /* dark-mode --accent (#34d399) is a light green — white text on it fails contrast
+       (measured 1.92:1, Lighthouse color-contrast audit). Dark text clears 4.5:1 easily. */
+    --accent-foreground: #052e1f;
   }
 }
 

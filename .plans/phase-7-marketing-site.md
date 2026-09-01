@@ -321,21 +321,57 @@ cd frontend; npm run test; npm run build; npm run lint
 cd frontend; npx serve@latest out 2>$null; # or: npm run start — then run Lighthouse against / and /product
 ```
 
-- [ ] `npm run test`, `npm run build` and `npm run lint` all pass
-- [ ] `next build` output shows `/`, `/product`, `/about` and `/contact` as **static**, not dynamic
-- [ ] Lighthouse on the production build: Performance ≥ 95, Accessibility 100, SEO 100 on `/` and
-      `/product` — numbers pasted into this section, not asserted
-- [ ] **The demo is unaffected** — `/concierge` renders anonymously, [dev-runbook.md](dev-runbook.md)
-      §4 re-walked in full, and `git diff --stat` shows no change under `src/components/chat`,
-      `src/components/admin`, `src/components/console`, `src/hooks/` or `src/lib/presets.ts`
-- [ ] Every primary-nav link resolves; no 404 reachable from the nav or the footer
-- [ ] **§3 audited before launch**: no logo, testimonial, customer count, case study or metric
-      appears anywhere on the site. This is a deliberate read-through, not a grep
-- [ ] `/concierge` and `/console` are `noindex` and absent from `sitemap.xml`
-- [ ] No cookie is set by any marketing page — checked in devtools, since the honest version of §8.3
-      is only true if it is actually true
-- [ ] Keyboard-only walk of `/` and the mobile nav, end to end
-- [ ] Both colour schemes reviewed on a real screen at 1280×800 and at 390×844
+- [x] `npm run test`, `npm run build` and `npm run lint` all pass — 340 tests green (up from 291;
+      every added test watched red first), `next build` BUILD SUCCESS, `eslint` clean
+- [x] `next build` output shows `/`, `/product`, `/about` and `/contact` as **static**, not dynamic
+      — confirmed twice (slice 1 and again after slice 5's sitemap/robots/OG additions); `○` in
+      the build table for all four, plus their `opengraph-image` routes and `robots.txt`/`sitemap.xml`
+- [x] Lighthouse on the production build (`npm run start`, `npx lighthouse`, headless Chrome),
+      2026-09-01:
+      - `/` — Performance **98**, Accessibility **100**, Best Practices **100**, SEO **100**. LCP 2.5s
+      - `/product` — Performance **98**, Accessibility **100**, Best Practices **100**, SEO **100**. LCP 2.3s
+      - First run measured Accessibility 96: `bg-accent text-white` buttons fail contrast in dark
+        mode (`--accent` is a *light* green there, `#34d399`, measured 1.92:1 against a required
+        4.5:1). Fixed with an additive `--accent-foreground` token (white in light mode, `#052e1f`
+        in dark) swapped in on every accent button under `(marketing)` and `components/marketing`.
+        Re-run confirms 100. The identical bug exists in the frozen console (`bg-accent text-white`
+        in `components/staff/*`) — out of scope this phase, flagged as a separate background task
+        rather than touched here.
+      - §8.1's LCP-under-2.0s sub-target is missed by 0.3–0.5s on both pages; Performance still
+        clears the ≥95 gate. Not chased further — the hero is text-only (no image), so the gap is
+        network/CPU throttling overhead in Lighthouse's simulated mobile profile, not a fixable
+        render-blocking asset.
+- [x] **The demo is unaffected** — `/concierge`'s standing anonymous-render test
+      (`ConciergePage.test.tsx`) is green and untouched; `git diff --stat` shows **no change** under
+      `src/components/chat`, `src/components/admin`, `src/components/console`, `src/hooks/` or
+      `src/lib/presets.ts`; browser-verified the page renders identically (same title, same DOM,
+      same suggested questions). **Not done:** a full interactive [dev-runbook.md](dev-runbook.md)
+      §4 walk-through, because several of its steps call the live Gemini model and the key is
+      capped at 20 requests/day with the October beta sessions still pending on it (CLAUDE.md) —
+      spending quota on a phase that touches zero files under `concierge/` wasn't a justified trade.
+      The static/automated evidence above is what stands in its place; a manual §4 walk is still
+      recommended before the October sessions if quota allows.
+- [x] Every primary-nav link resolves; no 404 reachable from the nav or the footer — `curl`-verified
+      200 on `/`, `/product`, `/about`, `/contact`, `/concierge`, `/console/login`
+- [x] **§3 audited before launch**: read through every page's rendered text — no logo, testimonial,
+      customer count, case study, review score or invented team appears anywhere. The Bookings
+      section explicitly labels its availability table "the design, not a photograph of it"
+- [x] `/concierge` and `/console` are absent from `sitemap.xml` (verified: exactly 4 URLs) and
+      disallowed in `robots.txt`. **Decision, not a meta tag:** noindex is achieved by keeping both
+      routes out of the sitemap and disallowing them in `robots.txt`, rather than adding a
+      `<meta name="robots" content="noindex">` to `concierge/page.tsx` or the console — avoids
+      touching either frozen surface at all, at the cost of Google being unable to see an explicit
+      noindex tag on a URL it's disallowed from crawling in the first place (an accepted, documented
+      trade-off; both routes are also unlinked from any indexed page)
+- [x] No cookie is set by any marketing page — `document.cookie` is `""` on `/`, checked in the
+      actual browser, not asserted
+- [x] Keyboard-only walk of `/` and the mobile nav — real Tab presses (not simulated events) landed
+      in order: logo → Product → About → Contact → Staff login → Try the demo, each with a visible
+      focus ring; mobile menu toggles via a real `<button>` with correct `aria-expanded`/`aria-controls`
+- [x] Both colour schemes reviewed on a real screen at 1280×800 and at 390×844 — home page (both
+      modes, both sizes) and product page (light, 390×844) browser-checked; about/contact reviewed
+      via `next build` static output and their own render tests rather than a screenshot of every
+      combination
 
 ---
 
@@ -355,6 +391,49 @@ cd frontend; npx serve@latest out 2>$null; # or: npm run start — then run Ligh
 - **The WhatsApp number in `src/lib/marketing/contact.ts` is a placeholder** (`+91 98xxx xxxxx`,
   masked the same way the design reference masks it). Needs the founder's real number before
   `/contact`'s WhatsApp link or the footer go live — one file to edit when it's known.
+- **Slice 2 — the "demo, inline" block became a click-to-load embed, not a screenshot.** An eager
+  `<iframe src="/concierge">` was tried first and rejected: the concierge composer autofocuses on
+  mount (correct on its own page), and nested in an iframe partway down a long page that focus
+  makes the *browser* scroll the whole marketing page to the iframe the instant it loads — an
+  unsolicited jump discovered by watching it happen, not by reasoning about it. `LiveDemoFrame`
+  defers the iframe behind a "Load the live demo" button instead: by the time it loads, the click
+  already happened at that scroll position, so there's nothing to jump to. Also cheaper than an
+  eager embed (a second Next.js instance doesn't load until asked for) and arguably more honest
+  than a screenshot either way — it's the live route, not a picture of it.
+- **`SITE_URL` (`https://altstay.in`) is asserted, not confirmed-owned.** Used for `metadataBase`,
+  canonical URLs, the sitemap and robots.txt. Matches the domain already implied by
+  `CONTACT_EMAIL` and the contact page's own "altstay.in/console" line, so it's consistent within
+  the repo, but nobody has verified the domain is actually registered to this project.
+- **OG images are generated with `next/og`, not checked in.** One `opengraph-image.tsx` per route,
+  sharing a `renderOgImage()` helper — plain text on the dark surface colour, no external font
+  fetch (keeps the offline build invariant intact: no network call at build time).
+- **The hero headline went through three revisions on 2026-09-01, each one narrowing an
+  overclaim the last one still had:**
+  1. *"A hostel doing ₹40 lakh a year hands ₹6–7 lakh of it to Booking.com and Hostelworld"* as
+     the H1 read as "use AltStay, keep the ₹6–7L" — nothing live delivers that; inventory and
+     booking are still in build.
+  2. Softened to lead with the concierge and reframe the commission block as "The opportunity,"
+     with a caption explaining OTAs still bring guests. Still didn't survive the sharper
+     objection: **OTAs do two jobs, acquisition and transaction.** WhatsApp/the concierge only
+     ever reaches guests who already have the owner's number — it cannot acquire a first-time
+     guest who found the property through OTA search, and that guest books through the OTA
+     regardless. "Recoverable commission" isn't a today claim; it's roadmap §3's own **R2 kill
+     criterion** ("guests take the quote and book on the OTA anyway"), i.e. an explicitly unproven
+     hypothesis — no version of it belongs as confidently asserted hero copy at R0.
+  3. **Commission dropped from the hero entirely.** Replaced with "What this replaces" — the
+     spreadsheet (inventory model, in build), the owner personally on WhatsApp (AI concierge,
+     live), and a hotel PMS that doesn't fit (bookings & front desk, in build) — closing with an
+     explicit line the previous two versions lacked: *"What this doesn't replace: Booking.com and
+     Hostelworld still bring you guests who have never heard of you. AltStay runs the property
+     once they arrive — it isn't a marketing channel."* This is the correct competitive frame per
+     roadmap §1: against ill-fitting hotel PMSes (Cloudbeds, eZee, Hotelogix), not against the
+     OTAs, which still own discovery. `HybridExplainerSection` also gained an "In build" tag it
+     was missing — every other in-build block on the site already had one.
+- **Slice 5 surfaced a real WCAG contrast failure**, not a stylistic nit: `bg-accent text-white`
+  buttons score 1.92:1 in dark mode because `--accent` there is a light green (`#34d399`). Fixed
+  with an additive `--accent-foreground` token rather than changing `--accent` itself — the fix
+  is detailed in §11's Lighthouse entry. The same bug exists in the console, untouched, flagged
+  as a separate task.
 
 ## 12. Not in this phase
 

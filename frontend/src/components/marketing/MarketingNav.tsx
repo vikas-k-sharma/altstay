@@ -38,7 +38,7 @@ export function MarketingNav() {
           </Link>
           <Link
             href="/concierge"
-            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             Try the demo
           </Link>
@@ -89,7 +89,7 @@ export function MarketingNav() {
             <li>
               <Link
                 href="/concierge"
-                className="block rounded-full bg-accent px-4 py-2 text-center text-sm font-medium text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="block rounded-full bg-accent px-4 py-2 text-center text-sm font-medium text-accent-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 onClick={() => setOpen(false)}
               >
                 Try the demo

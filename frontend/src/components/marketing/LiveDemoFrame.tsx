@@ -19,7 +19,7 @@ export function LiveDemoFrame() {
         <button
           type="button"
           onClick={() => setLoaded(true)}
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           Load the live demo
         </button>

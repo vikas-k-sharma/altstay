@@ -26,4 +26,19 @@ describe('marketing page metadata', () => {
   ])('%s is force-static', (_route, mod) => {
     expect(mod.dynamic).toBe('force-static');
   });
+
+  it.each([
+    ['/', home],
+    ['/product', product],
+    ['/about', about],
+    ['/contact', contact],
+  ])('%s carries a canonical URL and Open Graph title/description', (route, mod) => {
+    const metadata = mod.metadata as {
+      alternates?: { canonical?: unknown };
+      openGraph?: { title?: unknown; description?: unknown };
+    };
+    expect(metadata.alternates?.canonical).toBe(route);
+    expect(metadata.openGraph?.title).toBeTruthy();
+    expect(metadata.openGraph?.description).toBeTruthy();
+  });
 });

@@ -43,7 +43,7 @@ export function StatusCtaSection() {
           <div className="mt-6 flex flex-wrap gap-4">
             <a
               href={WHATSAPP_HREF}
-              className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
+              className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground hover:opacity-90"
             >
               Message on WhatsApp
             </a>

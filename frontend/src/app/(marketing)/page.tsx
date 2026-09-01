@@ -8,10 +8,16 @@ import { StatusCtaSection } from '@/components/marketing/StatusCtaSection';
 
 export const dynamic = 'force-static';
 
+const TITLE = 'AltStay — Property Management for Hybrid Stays';
+const DESCRIPTION =
+  'AltStay is a property management system for hostels, surf camps and retreat centres: an AI concierge, hybrid inventory, and a booking system that runs your front desk.';
+
 export const metadata: Metadata = {
-  title: 'AltStay — Property Management for Hybrid Stays',
-  description:
-    'AltStay is a property management system for hostels, surf camps and retreat centres: an AI concierge, hybrid inventory, and a booking system that runs your front desk.',
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: '/' },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: '/', type: 'website' },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
 };
 
 // phase-7 §5.1 — six blocks, each its own component with its copy in one place, so a KILL

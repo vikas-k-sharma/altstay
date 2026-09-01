@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
+import { SITE_URL } from '@/lib/marketing/site';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: 'AltStay — Property Management for Hybrid Stays',
     template: '%s · AltStay',

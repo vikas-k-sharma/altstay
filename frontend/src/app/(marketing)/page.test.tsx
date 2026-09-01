@@ -7,16 +7,21 @@ describe('MarketingHomePage', () => {
     render(<MarketingHomePage />);
 
     expect(
-      screen.getByRole('heading', { level: 1, name: /hands ₹6–7 lakh/i })
+      screen.getByRole('heading', { level: 1, name: /not hotels wearing a hostel skin/i })
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Try the concierge' })).toHaveAttribute('href', '/concierge');
     expect(screen.getByRole('link', { name: 'See the product' })).toHaveAttribute('href', '/product');
   });
 
-  it('states the commission arithmetic as an illustrative example, not a promise', () => {
+  it('positions AltStay as replacing PMS ops, not as an OTA-commission recovery tool', () => {
     render(<MarketingHomePage />);
-    expect(screen.getByText(/illustrative example/i)).toBeInTheDocument();
-    expect(screen.getByText('₹39,42,000')).toBeInTheDocument();
+    // Acquisition vs. transaction: WhatsApp/the concierge only reaches guests who already have
+    // the owner's number, so it cannot acquire a first-time OTA-discovered guest. The hero must
+    // not imply AltStay recovers OTA commission — it must say plainly that it doesn't replace
+    // the OTAs' acquisition role, only the ops running underneath.
+    expect(screen.queryByText(/hands ₹6–7 lakh/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/isn't a marketing channel/i)).toBeInTheDocument();
+    expect(screen.getByText(/have never heard of you/i)).toBeInTheDocument();
   });
 
   it('names both mismatches from the problem section', () => {
