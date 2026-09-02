@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 const PLAINLY = [
   { label: 'Team', body: 'One person building it.' },
-  { label: 'Built for', body: 'Hostels, surf camps, retreat centres — 20 to 120 beds.' },
+  { label: 'Built for', body: 'Hostels, homestays, surf camps, retreat centres — 20 to 120 beds or rooms.' },
   { label: 'Where', body: "India and South-East Asia first, because that's where WhatsApp is the front desk." },
   { label: 'Not building', body: 'A channel manager, a booking engine for guests, or a hotel PMS with a hostel skin.' },
 ] as const;
@@ -35,11 +35,11 @@ export default function AboutPage() {
           for hotels.
         </p>
         <p>
-          A hotel PMS assumes a room is the unit of sale. That assumption breaks on the first day
-          at a 40-bed hostel, where the same room is a six-bed dorm on Tuesday and a private
-          double on Saturday, and where the property also sells a seven-day yoga retreat and rents
-          scooters. Owners handle the gap the only way they can: a spreadsheet, and their own
-          memory.
+          A hotel PMS assumes a room is the unit of sale. That assumption breaks on day one for a
+          hostel, a homestay, or a retreat centre — the same room might be a six-bed dorm on
+          Tuesday and a private double on Saturday, and the property might also sell a seven-day
+          yoga retreat and rent scooters. Owners handle the gap the only way they can: a
+          spreadsheet, and their own memory.
         </p>
         <p>
           The second gap is where the guest actually is. In India and South-East Asia guests talk
@@ -56,7 +56,7 @@ export default function AboutPage() {
         <p>
           The inventory model is the actual product. Bed-level units under physical rooms under
           room types, so the two ways of selling the same space can never both be available. It is
-          unglamorous and it is the reason a hostel owner would switch.
+          unglamorous and it is the reason an owner would switch.
         </p>
         <p>
           Right now it is one person, running locally, with two beta properties being set up. I

@@ -13,6 +13,16 @@ describe('MarketingHomePage', () => {
     expect(screen.getByRole('link', { name: 'See the product' })).toHaveAttribute('href', '/product');
   });
 
+  it('names the audience beyond hostels: homestays, surf camps and retreat centres', () => {
+    // The hero's H1 uses "hostel" as its one concrete example (the hostel/hotel wordplay), but
+    // the eyebrow and subhead immediately around it must broaden to the rest of the audience —
+    // a homestay or retreat owner shouldn't have to read past the headline to feel included.
+    render(<MarketingHomePage />);
+    expect(screen.getByText(/homestays/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/surf camp/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/retreat centre/i)).toBeInTheDocument();
+  });
+
   it('positions AltStay as replacing PMS ops, not as an OTA-commission recovery tool', () => {
     render(<MarketingHomePage />);
     // Acquisition vs. transaction: WhatsApp/the concierge only reaches guests who already have

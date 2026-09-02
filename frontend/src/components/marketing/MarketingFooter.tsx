@@ -11,8 +11,8 @@ export function MarketingFooter() {
               AltStay <span className="text-text-muted">OS</span>
             </p>
             <p className="mt-3 max-w-xs text-sm text-text-muted">
-              Property management for hostels, surf camps and retreat centres. Built in India, for
-              hybrid inventory.
+              Property management for hostels, homestays, surf camps and retreat centres. Built
+              in India, for hybrid inventory.
             </p>
           </div>
 

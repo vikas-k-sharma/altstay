@@ -33,15 +33,16 @@ export function HeroSection() {
   return (
     <section className="mx-auto max-w-6xl px-4 pt-16 pb-20 sm:px-6 sm:pt-20">
       <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
-        Property management · Hostels · Surf camps · Retreats
+        Property management · Hostels · Homestays · Surf camps · Retreats
       </p>
       <h1 className="mt-4 max-w-4xl text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem]">
         A PMS built for hostels, not hotels wearing a hostel skin.
       </h1>
       <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-muted">
         Your rooms sell two ways, your guests live on WhatsApp, and every hotel PMS pretends
-        neither is true. AltStay is built to replace the spreadsheet and the phone that are
-        actually running your hostel today — starting with the phone.
+        neither is true — whether you run a hostel, a homestay, a surf camp or a retreat centre.
+        AltStay is built to replace the spreadsheet and the phone that are actually running your
+        property today — starting with the phone.
       </p>
 
       <div className="mt-8 flex flex-wrap items-center gap-4">

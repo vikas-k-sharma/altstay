@@ -429,6 +429,16 @@ cd frontend; npx serve@latest out 2>$null; # or: npm run start — then run Ligh
      roadmap §1: against ill-fitting hotel PMSes (Cloudbeds, eZee, Hotelogix), not against the
      OTAs, which still own discovery. `HybridExplainerSection` also gained an "In build" tag it
      was missing — every other in-build block on the site already had one.
+- **Audience broadened beyond "hostel" (2026-09-02).** Every prominent surface — hero eyebrow,
+  footer tagline, home/about metadata descriptions, About's "Built for" line — said "hostels,
+  surf camps and retreat centres" or just "hostel," with homestays and co-living absent
+  everywhere. Added "homestays" throughout (footer, home metadata, About's table and body) and to
+  the hero eyebrow/subhead. Kept the H1's "hostels, not hotels" wordplay — it's a real, memorable
+  line and roadmap's own flagship example — but made the very next line (subhead) explicitly name
+  all four: "whether you run a hostel, a homestay, a surf camp or a retreat centre," so nobody
+  reading past the headline feels excluded. Didn't touch `product-roadmap.md`'s own vocabulary
+  (which says "co-living stays," not "homestays") — that's a strategic doc outside this phase's
+  scope; flagged to the user rather than edited.
 - **Slice 5 surfaced a real WCAG contrast failure**, not a stylistic nit: `bg-accent text-white`
   buttons score 1.92:1 in dark mode because `--accent` there is a light green (`#34d399`). Fixed
   with an additive `--accent-foreground` token rather than changing `--accent` itself — the fix
