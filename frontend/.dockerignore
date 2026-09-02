@@ -1,0 +1,18 @@
+# Installed inside the image by `npm ci` against the lockfile. Copying the
+# host's node_modules in would ship Windows-resolved native binaries to a
+# Linux container.
+node_modules/
+
+# Build output — the image runs its own `next build`.
+.next/
+out/
+coverage/
+
+# Never bake secrets into an image layer. Runtime config arrives as ACA
+# environment variables and secrets instead.
+.env
+.env.*
+
+*.md
+.idea/
+.vscode/

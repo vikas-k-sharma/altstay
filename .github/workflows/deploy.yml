@@ -1,0 +1,150 @@
+# Builds both container images, pushes them to GitHub Container Registry, and
+# rolls the Azure Container Apps revisions.
+#
+# Images go to ghcr.io rather than Azure Container Registry deliberately: the
+# cheapest ACR tier (Basic) is ~$5/month, while ghcr.io is free for private
+# packages on a personal account. ACA pulls with a PAT registered as a registry
+# credential — see docs/deploy-azure.md §3.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  # Lowercased below; ghcr rejects an image path with uppercase in it and
+  # github.repository preserves the owner's original casing.
+  IMAGE_BASE: ${{ github.repository }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # The suite runs in its own job, NOT inside the Dockerfile. A test baked into
+  # an image build reports through the build's exit code, so a skipped suite and
+  # a passing one look identical from the outside.
+  #
+  # Both suites are the offline ones: no GOOGLE_API_KEY, no ALTSTAY_DB_*. That
+  # is the standing invariant in CLAUDE.md, and running them here with no
+  # secrets configured is what keeps it honest.
+  # ---------------------------------------------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Backend suite (offline — no API key, no database)
+        working-directory: backend
+        run: ./mvnw -B clean verify
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend suite
+        working-directory: frontend
+        run: npm run test
+
+      - name: Frontend lint
+        working-directory: frontend
+        run: npm run lint
+
+  # ---------------------------------------------------------------------------
+  # Build + push. Two images, built in parallel via the matrix.
+  # ---------------------------------------------------------------------------
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - app: api
+            context: backend
+          - app: web
+            context: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lowercase the image path
+        id: img
+        run: echo "path=${REGISTRY}/${IMAGE_BASE,,}-${{ matrix.app }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          # Tagged with the commit SHA as well as :latest. ACA is updated to the
+          # SHA tag, never to :latest — pointing a revision at a moving tag means
+          # a restart can silently change what is running, and a rollback has
+          # nothing to roll back to.
+          tags: |
+            ${{ steps.img.outputs.path }}:${{ github.sha }}
+            ${{ steps.img.outputs.path }}:latest
+          build-args: |
+            ALTSTAY_SITE_URL=${{ vars.ALTSTAY_SITE_URL }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  # ---------------------------------------------------------------------------
+  # Roll the revisions. Skipped entirely until AZURE_CREDENTIALS exists, so the
+  # build half of this workflow is useful from the first push — before any Azure
+  # resource has been created.
+  # ---------------------------------------------------------------------------
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Gated on the repository VARIABLE, not the secret: the `secrets` context is
+    # not available in a job-level `if` (only github, needs, vars and inputs are),
+    # so a condition on AZURE_CREDENTIALS would evaluate to empty and skip forever.
+    if: ${{ github.ref == 'refs/heads/main' && vars.AZURE_RESOURCE_GROUP != '' }}
+    steps:
+      - name: Lowercase the image path
+        id: img
+        run: echo "base=${REGISTRY}/${IMAGE_BASE,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # The API first. If the schema moved, Flyway applies it on this container's
+      # boot, so the new web revision must not go live against the old API.
+      - name: Roll altstay-api
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az containerapp update \
+              --name altstay-api \
+              --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+              --image ${{ steps.img.outputs.base }}-api:${{ github.sha }}
+
+      - name: Roll altstay-web
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az containerapp update \
+              --name altstay-web \
+              --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+              --image ${{ steps.img.outputs.base }}-web:${{ github.sha }}

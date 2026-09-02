@@ -1,0 +1,16 @@
+# Build output — the image builds its own; copying a stale local target/ in
+# both bloats the context and risks packaging a jar nobody built here.
+target/
+
+# Credentials. .env.properties is gitignored so a CI checkout never has it,
+# but a local `docker build` would happily copy it into the image layer and
+# publish the database password to the registry. Excluded explicitly.
+.env.properties
+.env
+.env.*
+
+# Docs and IDE noise — nothing in the build needs them.
+*.md
+.idea/
+.vscode/
+*.iml
