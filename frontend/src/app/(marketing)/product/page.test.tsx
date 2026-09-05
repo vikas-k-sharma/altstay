@@ -29,6 +29,20 @@ describe('ProductPage', () => {
     expect(screen.getByText(/no screenshot here yet/i)).toBeInTheDocument();
   });
 
+  it('describes the inventory model for property types other than a hostel', () => {
+    // 2026-09-05. Inventory was the page's most hostel-shaped section: every worked example was
+    // a dorm bed, which reads as "dorms are what this supports". The schema is already general
+    // (space.sale_mode is WHOLE or PER_UNIT — V7__inventory.sql), so the page must show the same
+    // three layers mapped onto a camp, a homestay and a retreat centre, not just the launch
+    // example. If that mapping is dropped, this fails.
+    render(<ProductPage />);
+
+    expect(screen.getByText(/the same three layers, in a property that isn't a hostel/i)).toBeInTheDocument();
+    for (const type of [/surf camp/i, /homestay/i, /retreat centre/i]) {
+      expect(screen.getAllByText(type).length).toBeGreaterThan(0);
+    }
+  });
+
   it('has no image without alt text anywhere on the page', () => {
     const { container } = render(<ProductPage />);
     container.querySelectorAll('img').forEach((img) => expect(img.getAttribute('alt')).not.toBeNull());

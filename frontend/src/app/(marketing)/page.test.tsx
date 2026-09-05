@@ -7,20 +7,27 @@ describe('MarketingHomePage', () => {
     render(<MarketingHomePage />);
 
     expect(
-      screen.getByRole('heading', { level: 1, name: /not hotels wearing a hostel skin/i })
+      screen.getByRole('heading', { level: 1, name: /your property isn't a hotel/i })
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Try the concierge' })).toHaveAttribute('href', '/concierge');
     expect(screen.getByRole('link', { name: 'See the product' })).toHaveAttribute('href', '/product');
   });
 
-  it('names the audience beyond hostels: homestays, surf camps and retreat centres', () => {
-    // The hero's H1 uses "hostel" as its one concrete example (the hostel/hotel wordplay), but
-    // the eyebrow and subhead immediately around it must broaden to the rest of the audience —
-    // a homestay or retreat owner shouldn't have to read past the headline to feel included.
+  it('addresses the whole audience, not just hostels — including in the H1', () => {
+    // 2026-09-05. The earlier H1 ("a PMS built for hostels, not hotels wearing a hostel skin")
+    // named one quarter of the audience, so a homestay or co-living owner landed on a headline
+    // addressed to someone else. The H1 must now name no single property type, and the eyebrow
+    // and subhead around it must name all five from roadmap §1 plus "homestays".
     render(<MarketingHomePage />);
-    expect(screen.getByText(/homestays/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/surf camp/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/retreat centre/i)).toBeInTheDocument();
+
+    const h1 = screen.getByRole('heading', { level: 1 });
+    expect(h1.textContent).not.toMatch(/hostel|homestay|camp|retreat|co-living/i);
+
+    // \b on "hostel" on purpose: "Hostelworld" in the OTA disclaimer would otherwise satisfy
+    // this assertion without the audience ever being named.
+    for (const audience of [/\bhostels?\b/i, /\bhomestays?\b/i, /surf camps?/i, /retreats?/i, /co-living/i]) {
+      expect(screen.getAllByText(audience).length).toBeGreaterThan(0);
+    }
   });
 
   it('positions AltStay as replacing PMS ops, not as an OTA-commission recovery tool', () => {
@@ -36,7 +43,7 @@ describe('MarketingHomePage', () => {
 
   it('names both mismatches from the problem section', () => {
     render(<MarketingHomePage />);
-    expect(screen.getByText(/the same room is two products/i)).toBeInTheDocument();
+    expect(screen.getByText(/the same space is two products/i)).toBeInTheDocument();
     expect(screen.getByText(/you are the whatsapp integration/i)).toBeInTheDocument();
   });
 

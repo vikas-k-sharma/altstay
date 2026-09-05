@@ -8,7 +8,7 @@ export const dynamic = 'force-static';
 
 const TITLE = 'Product';
 const DESCRIPTION =
-  'Concierge, inventory and bookings — three parts of AltStay built on one inventory model, described plainly against what is live and what is still in build.';
+  'Concierge, inventory and bookings — three parts of AltStay on one inventory model that fits a hostel, a homestay, a camp or a retreat, described plainly against what is live and what is still in build.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -26,7 +26,8 @@ export default function ProductPage() {
         Three parts. One inventory model underneath all of them.
       </h1>
       <p className="mt-4 max-w-2xl text-lg leading-relaxed text-text-muted">
-        The concierge is what you can use today. Inventory is what makes the rest of it correct.
+        The concierge is what you can use today. Inventory is what makes the rest of it correct —
+        one model that covers a dorm bed, a tent bunk, a private room and a whole cottage.
         Bookings is the front desk your staff will actually spend the day in. Where something
         isn&apos;t built yet, this page says so.
       </p>

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AltStay — AI Hostel Concierge & Knowledge Base',
+  title: 'AltStay — AI Guest Concierge & Knowledge Base',
   description: 'Instant WhatsApp-style AI guest receptionist with real-time zero-save rule synchronization.',
 };
 

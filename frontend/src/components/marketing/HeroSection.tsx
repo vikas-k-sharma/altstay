@@ -11,9 +11,18 @@ import Link from 'next/link';
 // what's actually true right now: AltStay replaces the spreadsheet and the phone that are
 // currently running the property, which is the correct competitive frame — against ill-fitting
 // hotel PMSes (Cloudbeds, eZee, Hotelogix), not against the OTAs, which still handle discovery.
+//
+// v4, 2026-09-05 — the H1 itself was the last hostel-only surface. "A PMS built for hostels, not
+// hotels wearing a hostel skin" is a good line that names one quarter of the audience, and the
+// 2026-09-02 broadening pass had fixed the eyebrow and subhead around it without touching it, so
+// a homestay or co-living owner still landed on a headline addressed to someone else. The
+// replacement keeps the same rhetorical shape — the mismatch stated in two beats — with no
+// property type in it at all, and lets the eyebrow and subhead carry the concrete list. The
+// audience list is now the union of roadmap §1's ("hostels, surf camps, retreat centres,
+// co-living stays") and the site's own ("homestays"), used verbatim on every surface.
 const REPLACES = [
   {
-    from: 'The spreadsheet tracking which beds are free',
+    from: 'The spreadsheet tracking which beds and rooms are free',
     to: 'Inventory model',
     status: 'In build',
   },
@@ -23,7 +32,7 @@ const REPLACES = [
     status: 'Live',
   },
   {
-    from: "A hotel PMS that doesn't understand your rooms",
+    from: "A hotel PMS that doesn't fit how you sell",
     to: 'Bookings & front desk',
     status: 'In build',
   },
@@ -33,16 +42,16 @@ export function HeroSection() {
   return (
     <section className="mx-auto max-w-6xl px-4 pt-16 pb-20 sm:px-6 sm:pt-20">
       <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
-        Property management · Hostels · Homestays · Surf camps · Retreats
+        Property management · Hostels · Homestays · Surf camps · Retreats · Co-living
       </p>
       <h1 className="mt-4 max-w-4xl text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem]">
-        A PMS built for hostels, not hotels wearing a hostel skin.
+        Your property isn&apos;t a hotel. Your PMS thinks it is.
       </h1>
       <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-muted">
-        Your rooms sell two ways, your guests live on WhatsApp, and every hotel PMS pretends
-        neither is true — whether you run a hostel, a homestay, a surf camp or a retreat centre.
-        AltStay is built to replace the spreadsheet and the phone that are actually running your
-        property today — starting with the phone.
+        Whether you run a hostel, a homestay, a surf camp, a retreat centre or a co-living house:
+        your spaces sell more than one way, your guests live on WhatsApp, and every hotel PMS
+        pretends neither is true. AltStay is built to replace the spreadsheet and the phone that
+        are actually running your property today — starting with the phone.
       </p>
 
       <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -83,9 +92,9 @@ export function HeroSection() {
           ))}
         </ul>
         <p className="mt-5 border-t border-border pt-4 text-xs text-text-muted">
-          What this doesn&apos;t replace: Booking.com and Hostelworld still bring you guests who
-          have never heard of you. AltStay runs the property once they arrive — it isn&apos;t a
-          marketing channel.
+          What this doesn&apos;t replace: Booking.com, Hostelworld and Airbnb still bring you
+          guests who have never heard of you. AltStay runs the property once they arrive — it
+          isn&apos;t a marketing channel.
         </p>
       </div>
     </section>

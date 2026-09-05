@@ -5,5 +5,5 @@ export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
 export default function Image() {
-  return renderOgImage('About', 'Software built for hybrid stays, not hotels wearing a hostel skin.');
+  return renderOgImage('About', 'Software built for hybrid stays, not hotel software with a new label on it.');
 }

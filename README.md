@@ -125,6 +125,20 @@ Open <http://localhost:3000>.
 (`ALTSTAY_DB_URL`, `ALTSTAY_DB_USER`, `ALTSTAY_DB_PASSWORD`) are the same, and the URL must carry
 `sslmode=require`.
 
+## Deployment
+
+Live on Azure Container Apps at
+<https://altstay-web.yellowriver-ae1bc796.southeastasia.azurecontainerapps.io>. The Next.js app has
+public ingress; Spring has **internal-only** ingress, so the browser has no route to it at all —
+which is what makes phase-4 §3.4's "the browser never calls Spring directly" a property of the
+network rather than a convention.
+
+`git push` to `main` is the whole deployment process: GitHub Actions runs both offline suites,
+builds two container images to ghcr.io, and rolls both revisions.
+
+The full procedure — rebuild-from-nothing steps, cost, and the two commands that switch between
+$0/month and always-warm — is in **[docs/deploy-azure.md](docs/deploy-azure.md)**.
+
 ## The demo
 
 1. In the right pane, change check-in from `2:00 PM` to `12:00 PM`. Don't reload.

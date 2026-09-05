@@ -5,7 +5,7 @@ export const dynamic = 'force-static';
 
 const TITLE = 'About';
 const DESCRIPTION =
-  'Why AltStay is being built: hostels and hybrid stays run on software designed for hotels, and the gap shows up first in inventory and second on WhatsApp.';
+  'Why AltStay is being built: hostels, homestays, camps, retreats and co-living run on software designed for hotels, and the gap shows up first in inventory and second on WhatsApp.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -17,9 +17,15 @@ export const metadata: Metadata = {
 
 const PLAINLY = [
   { label: 'Team', body: 'One person building it.' },
-  { label: 'Built for', body: 'Hostels, homestays, surf camps, retreat centres — 20 to 120 beds or rooms.' },
+  {
+    label: 'Built for',
+    body: 'Hostels, homestays, surf camps, retreat centres, co-living — 20 to 120 beds or rooms.',
+  },
   { label: 'Where', body: "India and South-East Asia first, because that's where WhatsApp is the front desk." },
-  { label: 'Not building', body: 'A channel manager, a booking engine for guests, or a hotel PMS with a hostel skin.' },
+  {
+    label: 'Not building',
+    body: 'A channel manager, a booking engine for guests, or a hotel PMS with a new label on it.',
+  },
 ] as const;
 
 // phase-7 §5.3 — first person, short, no invented team or stock photography.
@@ -36,10 +42,11 @@ export default function AboutPage() {
         </p>
         <p>
           A hotel PMS assumes a room is the unit of sale. That assumption breaks on day one for a
-          hostel, a homestay, or a retreat centre — the same room might be a six-bed dorm on
-          Tuesday and a private double on Saturday, and the property might also sell a seven-day
-          yoga retreat and rent scooters. Owners handle the gap the only way they can: a
-          spreadsheet, and their own memory.
+          hostel, a homestay, a surf camp, a retreat centre or a co-living house — the same room
+          might be a six-bed dorm on Tuesday and a private double on Saturday, a tent might go by
+          the bunk or whole, and the property might also sell a seven-day yoga retreat and rent
+          scooters. Owners handle the gap the only way they can: a spreadsheet, and their own
+          memory.
         </p>
         <p>
           The second gap is where the guest actually is. In India and South-East Asia guests talk
@@ -54,9 +61,10 @@ export default function AboutPage() {
           worse than no concierge, and it is the objection that stops the sale.
         </p>
         <p>
-          The inventory model is the actual product. Bed-level units under physical rooms under
+          The inventory model is the actual product. Bed-level units under physical spaces under
           room types, so the two ways of selling the same space can never both be available. It is
-          unglamorous and it is the reason an owner would switch.
+          general on purpose: a homestay room is that model with one unit, a tent is that model
+          with four. It is unglamorous and it is the reason an owner would switch.
         </p>
         <p>
           Right now it is one person, running locally, with two beta properties being set up. I

@@ -29,9 +29,9 @@ export function ConciergeDetailSection() {
         It answers from rules you wrote, and it tells the guest when it doesn&apos;t know.
       </p>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted">
-        You keep a knowledge base in plain words — check-in times, dorm rates, ID rules, whether
-        the kitchen closes. Edit a line and the next reply uses it. There is no save button and
-        nothing to re-import.
+        You keep a knowledge base in plain words — check-in times, what a bed or a room costs,
+        ID rules, whether the kitchen closes, how far the beach is. Edit a line and the next reply
+        uses it. There is no save button and nothing to re-import.
       </p>
 
       <div className="mt-8 grid gap-6 sm:grid-cols-3">

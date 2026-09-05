@@ -1,15 +1,35 @@
 const FEATURES = [
   {
     title: 'Room type',
-    body: "6-bed mixed AC dorm · what it costs, what it includes, how it's described.",
+    body: "6-bed mixed AC dorm, Garden Cottage, Beachfront tent · what it costs, what it includes, how it's described.",
   },
   {
-    title: 'Physical room',
-    body: "Room 3 · a real door with a real key, which is also sellable whole as a private double.",
+    title: 'Space',
+    body: 'Room 3, Tent 4, the cottage · a real door with a real key, sellable whole or by what is inside it.',
   },
   {
-    title: 'Bed unit',
-    body: 'Bed 3-A through 3-F · the smallest thing a guest can buy, and what a private booking holds all six of.',
+    title: 'Unit',
+    body: 'Bed 3-A through 3-F · the smallest thing a guest can buy, and what a whole-space booking holds all of.',
+  },
+] as const;
+
+// The same three layers, mapped onto property types other than the launch example. Not a roadmap
+// item: the schema is already this general — `space.sale_mode` is WHOLE or PER_UNIT and a room
+// type carries a `kind` (V7__inventory.sql), so a homestay room is a space with one unit sold
+// whole, and a tent is a space with four sold either way. Written out because "a bed in a dorm"
+// was the only example on the page and read as the only case supported.
+const ELSEWHERE = [
+  {
+    property: 'Surf camp',
+    body: 'Beachfront tent → Tent 4 → bunks 4-A to 4-D. Sold per bunk midweek, whole to a couple on Saturday.',
+  },
+  {
+    property: 'Homestay',
+    body: 'Garden double → the garden room → one unit, sold whole. Two of the three layers, same model, nothing to work around.',
+  },
+  {
+    property: 'Retreat centre',
+    body: 'Shared twin → Cottage 2 → two beds. Per bed during a course, whole when a family takes it.',
   },
 ] as const;
 
@@ -26,14 +46,15 @@ export function InventoryDetailSection() {
         </span>
       </div>
       <p className="mt-3 max-w-2xl text-lg leading-relaxed text-text-muted">
-        Room types, physical rooms, bed units — and the hybrid case as the point, not an edge
+        Room types, physical spaces, bed units — and the hybrid case as the point, not an edge
         case.
       </p>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted">
         A hotel PMS gives you room types and rooms. That is one layer short: the thing you sell in
-        a dorm is a bed, and the thing you sell on a weekend is the whole room those beds are in.
-        AltStay models all three, so the two ways of selling the same space stay in sync without
-        you holding it together.
+        a dorm or a tent is a bed, and the thing you sell on a weekend is the whole space those
+        beds are in. AltStay models all three, so the two ways of selling the same space stay in
+        sync without you holding it together. A homestay room or a whole cottage uses the same
+        model with one unit instead of six — nothing to work around, and nothing extra to set up.
       </p>
 
       <div className="mt-8 grid gap-6 sm:grid-cols-3">
@@ -62,7 +83,21 @@ export function InventoryDetailSection() {
         </div>
       </div>
 
-      <p className="mt-6 text-sm font-medium text-foreground">
+      <div className="mt-8 max-w-2xl">
+        <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+          The same three layers, in a property that isn&apos;t a hostel
+        </p>
+        <dl className="mt-4 space-y-3">
+          {ELSEWHERE.map((item) => (
+            <div key={item.property} className="sm:flex sm:gap-4">
+              <dt className="text-sm font-medium text-foreground sm:w-36 sm:shrink-0">{item.property}</dt>
+              <dd className="mt-1 text-sm leading-relaxed text-text-muted sm:mt-0">{item.body}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      <p className="mt-8 text-sm font-medium text-foreground">
         Overselling isn&apos;t discipline. It&apos;s arithmetically impossible.
       </p>
     </section>

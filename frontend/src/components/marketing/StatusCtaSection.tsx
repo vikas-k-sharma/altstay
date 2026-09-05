@@ -9,7 +9,7 @@ const STATUS_ITEMS = [
   },
   {
     label: 'In build',
-    body: 'Inventory and bookings — the model, the availability calendar, and the front desk.',
+    body: 'Inventory and bookings — the model that handles a space sold whole or by the bed, the availability calendar, and the front desk.',
   },
   {
     label: 'Not yet',
@@ -34,7 +34,8 @@ export function StatusCtaSection() {
 
         <div className="mt-12 max-w-2xl border-t border-border pt-8">
           <p className="text-lg font-medium text-foreground">
-            If you run a property like this, I want the questions your guests actually ask.
+            If you run a hostel, a homestay, a camp, a retreat or a co-living house, I want
+            the questions your guests actually ask.
           </p>
           <p className="mt-2 text-sm leading-relaxed text-text-muted">
             That list is what the concierge is tuned against, and it&apos;s more useful to me than

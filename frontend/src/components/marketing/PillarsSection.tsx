@@ -2,24 +2,28 @@ import Link from 'next/link';
 
 // phase-7 §0 — the block a KILL verdict reorders. Each pillar's copy lives in this one array so
 // re-pointing (concierge demoted, inventory/bookings first) is a data edit, not a rebuild.
+// 2026-09-05: the inventory pillar said "beds and rooms", which names the hostel case and hides
+// the general one. The schema underneath is already generic — a space is sold WHOLE or PER_UNIT
+// (V7__inventory.sql) — so a cottage, a tent and a homestay room are the same model, not a
+// roadmap item. The copy now matches the schema instead of the launch example.
 export const PILLARS = [
   {
     id: 'concierge',
     status: 'Live',
     title: 'Answers guests from rules you wrote',
-    body: "Paste your check-in times, rates and policies in plain words. Guests get an answer in seconds, and when a question isn't covered it says so and hands over to you instead of inventing a pet policy.",
+    body: "Paste your check-in times, rates and house rules in plain words. Guests get an answer in seconds, and when a question isn't covered it says so and hands over to you instead of inventing a pet policy.",
   },
   {
     id: 'inventory',
     status: 'In build',
-    title: 'Beds and rooms as the same thing',
-    body: 'Room types, physical rooms and bed-level units in one model, so a room sold whole and the beds inside it can never both be available. This is the part no hotel PMS does.',
+    title: 'Beds, rooms and whole spaces in one model',
+    body: 'Room types, physical spaces and the beds inside them, so a space sold whole and the units inside it can never both be available — a dorm and its beds, a tent and its bunks, a cottage let whole. This is the part no hotel PMS does.',
   },
   {
     id: 'bookings',
     status: 'In build',
     title: 'A front desk, not a spreadsheet',
-    body: 'Availability by date, a booking from enquiry to check-out, rates that change by date, and check-in and check-out that a staff member can run on a laptop at the desk.',
+    body: 'Availability by date, a booking from enquiry to check-out, rates that change by date, and check-in and check-out that whoever is on the desk can run on a laptop.',
   },
 ] as const;
 

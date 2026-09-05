@@ -50,8 +50,8 @@ export default function ContactPage() {
           <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Email · For longer things</p>
           <p className="mt-2 text-lg font-medium text-foreground">{CONTACT_EMAIL}</p>
           <p className="mt-3 text-sm leading-relaxed text-text-muted">
-            Better if you&apos;re sending a rate sheet, a room list, or a long description of how
-            your property is laid out. Opens in your mail app — nothing is stored here.
+            Better if you&apos;re sending a rate sheet, a room or bed list, or a long description
+            of how your property is laid out. Opens in your mail app — nothing is stored here.
           </p>
           <a
             href={`mailto:${CONTACT_EMAIL}`}
@@ -74,8 +74,9 @@ export default function ContactPage() {
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-text-muted">What&apos;s useful to send</p>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-muted">
-            Bed count, how many rooms flip between dorm and private, and which OTAs you&apos;re
-            on. Three lines is enough to tell whether this fits.
+            How many beds or rooms you sell, whether any space goes both whole and by the bed —
+            a dorm that flips to a private, a tent, a house let room by room — and which OTAs
+            you&apos;re on. Three lines is enough to tell whether this fits.
           </p>
         </div>
 

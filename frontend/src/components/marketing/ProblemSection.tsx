@@ -1,9 +1,14 @@
 // phase-7 §5.1 block 2 — roadmap §1's two mismatches, stated as an owner experiences them.
+// 2026-09-05: mismatch 01 was written entirely in dorm vocabulary, so it read as a hostel
+// problem. It is not — it is the same problem in a homestay, a camp and a co-living house, and
+// the examples now say so. Deliberately left out: the retreat *bundle* (roadmap §5.2, "a retreat
+// is a bundle, not a room type"). It is a real mismatch, but phase-5 §13 defers building it, and
+// this block sits directly above three pillars that claim to solve what it names.
 const MISMATCHES = [
   {
     number: '01',
-    title: "The same room is two products. Your PMS knows one.",
-    body: 'Room 3 is a six-bed dorm Monday to Thursday. On Saturday a family takes the whole thing as a private double. Every hotel PMS treats a room as one sellable unit, so the real availability lives in a spreadsheet on your laptop — and the spreadsheet is why you stop selling the last two beds after 9 PM rather than risk double-booking them.',
+    title: 'The same space is two products. Your PMS knows one.',
+    body: 'Room 3 is a six-bed dorm Monday to Thursday. On Saturday a family takes the whole thing as a private double. A homestay lets two guest rooms one at a time, then the whole house to a wedding party. A camp sells a bunk in a tent that also goes whole to a couple. Every hotel PMS treats a room as one sellable unit, so the real availability lives in a spreadsheet on your laptop — and the spreadsheet is why you stop selling the last two beds after 9 PM rather than risk double-booking them.',
   },
   {
     number: '02',

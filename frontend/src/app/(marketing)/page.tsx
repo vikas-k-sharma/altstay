@@ -10,7 +10,7 @@ export const dynamic = 'force-static';
 
 const TITLE = 'AltStay — Property Management for Hybrid Stays';
 const DESCRIPTION =
-  'AltStay is a property management system for hostels, homestays, surf camps and retreat centres: an AI concierge, hybrid inventory, and a booking system that runs your front desk.';
+  'AltStay is a property management system for hostels, homestays, surf camps, retreat centres and co-living: an AI concierge, hybrid inventory that handles a space sold whole or by the bed, and a booking system that runs your front desk.';
 
 export const metadata: Metadata = {
   title: TITLE,

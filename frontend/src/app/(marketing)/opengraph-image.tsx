@@ -5,5 +5,5 @@ export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
 export default function Image() {
-  return renderOgImage('Property management', 'A PMS built for hostels, not hotels wearing a hostel skin.');
+  return renderOgImage('Property management', "Your property isn't a hotel. Your PMS thinks it is.");
 }

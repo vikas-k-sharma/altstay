@@ -1,7 +1,7 @@
 const FEATURES = [
   {
     title: 'Calendar',
-    body: 'Free beds per date, with the hybrid rule already applied — no second sheet to check.',
+    body: 'Free beds and free spaces per date, with the hybrid rule already applied — no second sheet to check.',
   },
   {
     title: 'Lifecycle',
@@ -9,14 +9,20 @@ const FEATURES = [
   },
   {
     title: 'Rates',
-    body: 'Per date, per room type, set in the console — the concierge quotes the same number.',
+    body: 'Per date, per room type, set in the console — high season, weekends, and a quiet Tuesday priced apart.',
   },
 ] as const;
 
+// One row per sellable thing, deliberately mixing property types. The two Room 3 rows are the
+// hybrid pair and constrain each other, which is what "closed" and "held" mean here. The tent
+// and the cottage are the two simple shapes — per-bunk only, and whole only — and neither may
+// show "held": nothing on this table would explain what was holding them, and a cell whose
+// reason isn't on the page is exactly the confusion the caption promises to avoid.
 const AVAILABILITY_ROWS = [
   { unit: 'Room 3 · dorm beds', values: ['6', '2', '2', '5', '4', 'held', 'held'] },
   { unit: 'Room 3 · whole', values: ['free', 'closed', 'closed', 'closed', 'closed', 'SOLD', 'SOLD'] },
-  { unit: 'Sea-view private', values: ['free', 'free', 'SOLD', 'SOLD', 'free', 'free', 'free'] },
+  { unit: 'Tent 4 · bunks', values: ['4', '4', '3', '3', '1', '0', '0'] },
+  { unit: 'Garden cottage · whole', values: ['free', 'free', 'SOLD', 'SOLD', 'free', 'free', 'free'] },
 ] as const;
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
@@ -38,14 +44,15 @@ export function BookingsDetailSection() {
         </span>
       </div>
       <p className="mt-3 max-w-2xl text-lg leading-relaxed text-text-muted">
-        Availability by date, a booking with a lifecycle, and a desk your staff can run on a
-        laptop.
+        Availability by date, a booking with a lifecycle, and a desk whoever is on shift can run
+        on a laptop.
       </p>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted">
-        One calendar showing what is genuinely free, per date and per unit. A booking that moves
-        from held to checked in to checked out, with the state written down rather than
-        remembered. Rates that differ by date, because a Saturday in December is not a Tuesday in
-        June.
+        One calendar showing what is genuinely free, per date and per unit — beds, tents, rooms
+        and whole spaces in the same view, with the ones that constrain each other already worked
+        out. A booking that moves from held to checked in to checked out, with the state written
+        down rather than remembered. Rates that differ by date, because a Saturday in December is
+        not a Tuesday in June.
       </p>
 
       <div className="mt-8 grid gap-6 sm:grid-cols-3">
